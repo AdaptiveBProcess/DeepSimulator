@@ -16,6 +16,9 @@ import utils.support as sup
 import tensorflow as tf
 from core_modules.times_allocator import samples_creator as sc
 from core_modules.times_allocator.models import basic_model as bsc
+from core_modules.times_allocator.models import dual_model as dual
+from core_modules.times_allocator.models import basic_model_nt as innt
+
 
 
 class TimesModelOptimizer():
@@ -84,33 +87,27 @@ class TimesModelOptimizer():
 
         def exec_pipeline(trial_stg):
             print(trial_stg)
+            trial_stg['all_r_pool'] = self.parms['all_r_pool']
             status = STATUS_OK
             # Path redefinition
             rsp = self._temp_path_redef(trial_stg, status=status)
             status = rsp['status']
             trial_stg = rsp['values'] if status == STATUS_OK else trial_stg
             # Vectorize input
-            vectorizer = sc.SequencesCreator(self.parms['read_options']['one_timestamp'], 
-                                              self.ac_index)
-            train_vec = vectorizer.vectorize('basic',
-                                              self.log_train,
-                                              trial_stg)
-            valdn_vec = vectorizer.vectorize('basic', 
-                                              self.log_valdn, 
-                                              trial_stg)
+            vectorizer = sc.SequencesCreator(
+                self.parms['read_options']['one_timestamp'], self.ac_index)
+            train_vec = vectorizer.vectorize(
+                self.parms['model_type'], self.log_train, trial_stg)
+            valdn_vec = vectorizer.vectorize(
+                self.parms['model_type'], self.log_valdn, trial_stg)
             # Train
-            trainer = self._get_trainer('basic')
+            trainer = self._get_trainer(self.parms['model_type'])
             tf.compat.v1.reset_default_graph()
-            model = trainer(self.ac_weights,
-                            train_vec,
-                            valdn_vec,
-                            trial_stg)
+            model = trainer(self.ac_weights, train_vec, valdn_vec, trial_stg)
             # evaluation
-            acc = model.evaluate(
-                x={'ac_input': valdn_vec['pref']['ac_index'],
-                   'features': valdn_vec['pref']['features']},
-                y={'time_output': valdn_vec['next']['expected']},
-                return_dict=True)
+            acc = self.evaluate_model(
+                self.parms['model_type'], model, valdn_vec)
+            print(acc)
             rsp = self._define_response(trial_stg, status, acc['loss'])
             print("-- End of trial --")
             return rsp
@@ -135,8 +132,12 @@ class TimesModelOptimizer():
             pass
 
     def _get_trainer(self, model_type):
-        if model_type == 'basic':
+        if model_type in ['basic', 'inter']:
             return bsc._training_model
+        elif model_type == 'inter_nt':
+            return innt._training_model
+        elif model_type == 'dual_inter':
+            return dual._training_model
         else:
             raise ValueError(model_type)
 
@@ -177,3 +178,35 @@ class TimesModelOptimizer():
         else:
             sup.create_csv_file_header(measurements, self.file_name)
         return response
+    
+    def evaluate_model(self, model_type, model, valdn_vec):
+        if model_type in ['inter', 'basic']:
+            return model.evaluate(
+                x={'ac_input': valdn_vec['pref']['ac_index'],
+                   'features': valdn_vec['pref']['features']},
+                y={'time_output': valdn_vec['next']['expected']},
+                return_dict=True)
+        elif model_type == 'inter_nt':
+            return model.evaluate(
+                x={'ac_input': valdn_vec['pref']['ac_index'],
+                   'n_ac_input': valdn_vec['pref']['n_ac_index'],
+                   'features': valdn_vec['pref']['features']},
+                y={'time_output': valdn_vec['next']},
+                return_dict=True)
+        elif model_type == 'dual_inter':
+            # with model['proc_model']['graph'].as_default():
+            acc_proc = model['proc_model']['model'].evaluate(
+                x={'ac_input': valdn_vec['proc_model']['pref']['ac_index'],
+                   'features': valdn_vec['proc_model']['pref']['features']},
+                y={'time_output': valdn_vec['proc_model']['next']},
+                return_dict=True)
+            # with model['wait_model']['graph'].as_default():
+            acc_wait = model['wait_model']['model'].evaluate(
+                x={'ac_input': valdn_vec['waiting_model']['pref']['ac_index'],
+                   'features': valdn_vec['waiting_model']['pref']['features']},
+                y={'time_output': valdn_vec['waiting_model']['next']},
+                return_dict=True)
+            return {'loss': (0.5*acc_proc['loss']) + (0.5*acc_wait['loss'])}
+        else:
+            raise ValueError('Unexistent model')
+    

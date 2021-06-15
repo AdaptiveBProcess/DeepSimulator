@@ -65,7 +65,11 @@ class DeepSimulator():
         output_path = os.path.join('output_files', sup.folder_id())
         for rep_num in range(0, self.parms['gl']['exp_reps']):
             seq_gen.generate(num_inst, start_time)
-            iarr = generator.generate(num_inst, start_time)
+            #TODO: remover esto, es simplemente para test
+            if self.parms['i_gen']['gen_method'] == 'test':
+                iarr = generator.generate(self.log_test, start_time)
+            else:
+                iarr = generator.generate(num_inst, start_time)
             event_log = times_allocator.generate(seq_gen.gen_seqs, iarr)
             event_log = pd.DataFrame(event_log)
             # Export log
@@ -90,6 +94,7 @@ class DeepSimulator():
         self._split_timeline(0.8,
                             self.parms['gl']['read_options']['one_timestamp'])
 
+
     @timeit
     @safe_exec
     def _read_bpmn(self, **kwargs) -> None:
@@ -97,6 +102,7 @@ class DeepSimulator():
                                  self.parms['gl']['file'].split('.')[0]+'.bpmn')
         self.bpmn = br.BpmnReader(bpmn_path)
         self.process_graph = gph.create_process_structure(self.bpmn)
+
 
     @staticmethod
     def _evaluate_logs(parms, log, sim_log, rep_num):
@@ -162,7 +168,52 @@ class DeepSimulator():
                     os.makedirs(base_folder)
                 destination = os.path.join(base_folder, 
                                            os.path.basename(source))
-                shutil.copyfile(source, destination)
+                # Copy dl models
+                allowed_ext = self._define_model_path({**self.parms['gl'],
+                                                       **self.parms['t_gen']})
+                is_dual = self.parms['t_gen']['model_type'] == 'dual_inter'
+                if is_dual and ('times_gen_models' in source) and any(
+                        [x in source for x in allowed_ext]):
+                    shutil.copyfile(source, destination)
+                elif not is_dual and ('times_gen_models' in source) and any(
+                        [self.parms['gl']['file'].split('.')[0]+x in source 
+                        for x in allowed_ext]):
+                    shutil.copyfile(source, destination)
+                # copy other models
+                folders = ['bpmn_models', 'embedded_matix', 'ia_gen_models']
+                allowed_ext = ['.emb', '.bpmn', '_mpdf.json', '_prf.json',
+                               '_prf_meta.json','_mpdf_meta.json', '_meta.json'] 
+                if any([x in source for x in folders]) and any(
+                        [self.parms['gl']['file'].split('.')[0]+x in source
+                         for x in allowed_ext]):
+                    shutil.copyfile(source, destination)
+                
+                
+    @staticmethod
+    def _define_model_path(parms):
+        inter = parms['model_type'] in ['inter', 'dual_inter', 'inter_nt']
+        is_dual = parms['model_type'] == 'dual_inter'
+        next_ac = parms['model_type'] == 'inter_nt'
+        arpool = parms['all_r_pool']
+        if inter:
+            if is_dual:
+                if arpool:
+                    return ['_dpiapr', '_dwiapr', '_diapr']
+                else:
+                    return ['_dpispr', '_dwispr', '_dispr']
+            else:
+                if next_ac:
+                    if arpool:
+                        return ['_inapr']
+                    else:
+                        return ['_inspr']
+                else:
+                    if arpool:
+                        return ['_iapr']
+                    else:
+                        return ['_ispr']
+        else:
+            return ['.h5', '_scaler.pkl', '_meta.json']
 
     @staticmethod
     def _save_times(times, parms):

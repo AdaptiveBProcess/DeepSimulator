@@ -210,6 +210,7 @@ class MultiPDFGenerator():
                         phi = np.sqrt(v + m**2)
                         mu = np.log(m**2/phi)
                         sigma = np.sqrt(np.log(phi**2/m**2))
+                        sigma = sigma if sigma > 0.0 else 0.000001
                         gen_inter = dobj[dist['dist']].rvs(sigma,
                                                            scale=np.exp(mu),
                                                            size=missing)
@@ -358,6 +359,7 @@ class MultiPDFGenerator():
                     phi = np.sqrt(v + m**2)
                     mu = np.log(m**2/phi)
                     sigma = np.sqrt(np.log(phi**2/m**2))
+                    sigma = sigma if sigma > 0.0 else 0.000001
                     gen_inter = dobj[dist['dist']].rvs(sigma,
                                                        scale=np.exp(mu),
                                                        size=missing)

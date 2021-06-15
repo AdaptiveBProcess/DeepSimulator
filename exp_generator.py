@@ -95,7 +95,7 @@ def sbatch_submit(in_batch, bsize=20):
 # create output folder
 output_folder = 'jobs_files'
 # Xserver ip
-ip_num = '172.17.37.49:0.0'
+ip_num = '172.17.156.11:0.0'
 
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)

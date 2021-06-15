@@ -18,6 +18,8 @@ import tensorflow as tf
 
 import samples_creator as sc
 from models import basic_model as bsc
+from models import dual_model as dual
+from models import basic_model_nt as innt
 
 class SlurmWorker():
     """
@@ -99,28 +101,58 @@ class SlurmWorker():
         # Vectorize input
         vectorizer = sc.SequencesCreator(self.parms['read_options']['one_timestamp'], 
                                          self.ac_index)
-        train_vec = vectorizer.vectorize('basic',
+        train_vec = vectorizer.vectorize(self.parms['model_type'],
                                           self.log_train,
                                           self.parms)
-        valdn_vec = vectorizer.vectorize('basic', 
+        valdn_vec = vectorizer.vectorize(self.parms['model_type'], 
                                           self.log_valdn, 
                                           self.parms)
         # Train
-        trainer = self._get_trainer('basic')
+        trainer = self._get_trainer(self.parms['model_type'])
         tf.compat.v1.reset_default_graph()
         model = trainer(self.ac_weights,
                         train_vec,
                         valdn_vec,
                         self.parms)
         # evaluation
-        acc = model.evaluate(
-            x={'ac_input': valdn_vec['pref']['ac_index'],
-               'features': valdn_vec['pref']['features']},
-            y={'time_output': valdn_vec['next']['expected']},
-            return_dict=True)
+        acc = self.evaluate_model(
+            self.parms['model_type'], model, valdn_vec)
+            
         rsp = self._define_response(self.parms, acc['loss'])
         print("-- End of trial --")
         return rsp
+
+    def evaluate_model(self, model_type, model, valdn_vec):
+        if model_type in ['inter', 'basic']:
+            return model.evaluate(
+                x={'ac_input': valdn_vec['pref']['ac_index'],
+                   'features': valdn_vec['pref']['features']},
+                y={'time_output': valdn_vec['next']['expected']},
+                return_dict=True)
+        elif model_type == 'inter_nt':
+            return model.evaluate(
+                x={'ac_input': valdn_vec['pref']['ac_index'],
+                   'n_ac_input': valdn_vec['pref']['n_ac_index'],
+                   'features': valdn_vec['pref']['features']},
+                y={'time_output': valdn_vec['next']},
+                return_dict=True)
+        elif model_type == 'dual_inter':
+            # with model['proc_model']['graph'].as_default():
+            acc_proc = model['proc_model']['model'].evaluate(
+                x={'ac_input': valdn_vec['proc_model']['pref']['ac_index'],
+                   'features': valdn_vec['proc_model']['pref']['features']},
+                y={'time_output': valdn_vec['proc_model']['next']},
+                return_dict=True)
+            # with model['wait_model']['graph'].as_default():
+            acc_wait = model['wait_model']['model'].evaluate(
+                x={'ac_input': valdn_vec['waiting_model']['pref']['ac_index'],
+                   'features': valdn_vec['waiting_model']['pref']['features']},
+                y={'time_output': valdn_vec['waiting_model']['next']},
+                return_dict=True)
+            return {'loss': (0.5*acc_proc['loss']) + (0.5*acc_wait['loss'])}
+        else:
+            raise ValueError('Unexistent model')
+
 
     def _temp_path_redef(self, settings, **kwargs) -> dict:
         # Paths redefinition
@@ -146,8 +178,12 @@ class SlurmWorker():
             sup.create_csv_file_header(measurements, self.res_files)
 
     def _get_trainer(self, model_type):
-        if model_type == 'basic':
+        if model_type in ['basic', 'inter']:
             return bsc._training_model
+        elif model_type == 'inter_nt':
+            return innt._training_model
+        elif model_type == 'dual_inter':
+            return dual._training_model
         else:
             raise ValueError(model_type)
 

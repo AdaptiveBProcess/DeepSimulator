@@ -30,7 +30,7 @@ def main(argv):
     # parms setting manual fixed or catched by console
     if not argv:
         # Event-log parms
-        parms['gl']['file'] = 'PurchasingExample.xes'
+        parms['gl']['file'] = 'cvs_1000_modified_upd.xes'
         parms['gl']['update_gen'] = False
         parms['gl']['update_ia_gen'] = False
         parms['gl']['update_mpdf_gen'] = False
@@ -60,11 +60,11 @@ def main(argv):
     parms['gl']['sim_metric'] = 'tsd' # Main metric
     # Additional metrics
     parms['gl']['add_metrics'] = ['day_hour_emd', 'log_mae', 'dl', 'mae']
-    parms['gl']['exp_reps'] = 1
+    parms['gl']['exp_reps'] = 5
     # Sequences generator
     parms['s_gen'] = dict()
-    parms['s_gen']['repetitions'] = 5
-    parms['s_gen']['max_eval'] = 15
+    parms['s_gen']['repetitions'] = 1
+    parms['s_gen']['max_eval'] = 2
     parms['s_gen']['concurrency'] = [0.0, 1.0]
     parms['s_gen']['epsilon'] = [0.0, 1.0]
     parms['s_gen']['eta'] = [0.0, 1.0]
@@ -73,22 +73,25 @@ def main(argv):
     # Inter arrival generator
     parms['i_gen'] = dict()
     parms['i_gen']['batch_size'] = 32 # Usually 32/64/128/256
-    parms['i_gen']['epochs'] = 200
-    parms['i_gen']['gen_method'] = 'dl' # pdf, dl, mul_pdf
+    parms['i_gen']['epochs'] = 100
+    parms['i_gen']['gen_method'] = 'prophet' # pdf, dl, mul_pdf, test, prophet
     # Times allocator parameters
     parms['t_gen'] = dict()
     parms['t_gen']['imp'] = 1
-    parms['t_gen']['max_eval'] = 12
+    parms['t_gen']['max_eval'] = 1
     parms['t_gen']['batch_size'] = 32 # Usually 32/64/128/256
-    parms['t_gen']['epochs'] = 200
+    parms['t_gen']['epochs'] = 10
     parms['t_gen']['n_size'] = [5, 10, 15]
     parms['t_gen']['l_size'] = [50, 100] 
     parms['t_gen']['lstm_act'] = ['selu', 'tanh']
     parms['t_gen']['dense_act'] = ['linear']
     parms['t_gen']['optim'] = ['Nadam']
-    parms['t_gen']['model_type'] = 'basic'
-    parms['t_gen']['opt_method'] = 'rand_hpc'
-    # Train models
+    parms['t_gen']['model_type'] = 'dual_inter' # basic, inter, dual_inter, inter_nt
+    parms['t_gen']['opt_method'] = 'bayesian' # bayesian, rand_hpc
+    parms['t_gen']['all_r_pool'] = True # only intercase features
+    parms['t_gen']['reschedule'] = False # reschedule according resource pool ocupation
+    parms['t_gen']['rp_similarity'] = 0.80 # Train models
+    print(parms['gl']['file'])
     print(parms)
     simulator = ds.DeepSimulator(parms)
     simulator.execute_pipeline()
