@@ -107,17 +107,19 @@ for _, _, files in os.walk(output_folder):
 # parameters definition
 imp = 1  # keras lstm implementation 1 cpu, 2 gpu
 logs = [
-        ('BPI_Challenge_2012_W_Two_TS.xes', 'sm3'),
-        ('BPI_Challenge_2017_W_Two_TS.xes', 'sm3'),
-        ('PurchasingExample.xes', 'sm3'),
-        ('Production.xes', 'sm3'),
-        ('ConsultaDataMining201618.xes', 'sm3'),
-        ('insurance.xes', 'sm2'),
-        ('callcentre.xes', 'sm3'),
-        ('poc_processmining.xes', 'sm3'),
-        ('confidential_1000.xes', 'sm3'),
-        ('confidential_2000.xes', 'sm3'),
-        ('cvs_pharmacy.xes', 'sm3')
+        # ('BPI_Challenge_2012_W_Two_TS.xes', 'sm3'),
+        # ('BPI_Challenge_2017_W_Two_TS.xes', 'sm3'),
+        # ('PurchasingExample.xes', 'sm3'),
+        # ('Production.xes', 'sm3'),
+        # ('ConsultaDataMining201618.xes', 'sm3'),
+        # ('insurance.xes', 'sm2'),
+        # ('callcentre.xes', 'sm3'),
+        # ('poc_processmining.xes', 'sm3'),
+        # ('confidential_1000.xes', 'sm3'),
+        # ('confidential_2000.xes', 'sm3'),
+        # ('cvs_pharmacy.xes', 'sm3'),
+		('cvs_10000_complete.xes', 'sm3'),
+		('cvs_10000_modified.xes', 'sm3')
         ]
 
 for log, miner in logs:

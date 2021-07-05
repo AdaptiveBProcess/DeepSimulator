@@ -151,7 +151,7 @@ class TimesGenerator():
             datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
         model_metadata['ac_index'] = self.ac_index
         model_metadata['usr_index'] = self.usr_index
-        model_metadata['log_size'] = len(self.log)
+        model_metadata['log_size'] = len(pd.DataFrame(self.log).caseid.unique())
         model_metadata = {**model_metadata, 
                           **times_optimizer.best_parms}
         model_name = metadata_file.replace('_meta.json', '')
@@ -258,6 +258,7 @@ class TimesGenerator():
         else:
             log[feat] = log[feat].fillna('sys')
         subsec_set = log[feat].unique().tolist()
+        subsec_set = [x for x in subsec_set if not x in ['Start', 'End']]
         index = dict()
         for i, _ in enumerate(subsec_set):
             index[subsec_set[i]] = i + 1

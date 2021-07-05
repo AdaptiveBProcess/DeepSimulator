@@ -4,30 +4,81 @@ Created on Tue Jun 15 11:34:07 2021
 
 @author: Manuel Camargo
 """
+import os
+import json
+from datetime import datetime
+
+import utils.support as sup
+
+import tensorflow as tf
+
+from tensorflow.keras.models import load_model
+
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Embedding, Concatenate
+from tensorflow.keras.layers import Dense, LSTM, BatchNormalization
+from tensorflow.keras.optimizers import Nadam, Adam, SGD, Adagrad
+from tensorflow.keras.models import save_model
+
 
 class TimesPredictorUpdater():
     """
     """
 
-    def __init__(self, num_categories, num_users, embedding_size):
-        self.num_categories = num_categories
-        self.num_users = num_users
-        self.embedding_size = embedding_size
+    def __init__(self, embbeding, modif_params, model_path):
+        self.embbeding = embbeding
+        self.modif_params = modif_params
+        self.model_path = model_path
+        
 
-    def read_predictive_model(parms, model_ext, parms_exts):
+    def execute_pipeline(self):
+        tf.compat.v1.reset_default_graph()
+        # Update processing time predictive model
+        self.update_model('_dpiapr', '_diapr', 
+                          ('lstm', 'batch_normalization','lstm_1'))
+        # Update waiting time predictive model
+        self.update_model('_dwiapr', '_diapr', 
+                          ('lstm_2', 'batch_normalization_1', 'lstm_3'))
+        # Update metadata
+        self.update_metadata()
+        
+    def update_metadata(self):
+        # Read metadata data
+        with open(self.model_path+'_diapr_meta.json') as file:
+            model_metadata = json.load(file)
+            model_metadata['ac_index'] = self.modif_params['ac_index']
+            model_metadata['generated_at'] = (
+                datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            model_metadata['roles_table'] += self.modif_params['m_tasks_assignment']
+            sup.create_json(model_metadata, self.model_path+'_upd_diapr_meta.json')
+        
+        
+    def update_model(self, model_ext, meta_ext, layer_names):    
+        # Read old predictive model
+        pred_model_weights, model_parms = self.read_predictive_model( 
+                                                                model_ext, 
+                                                                meta_ext)
+        # Create new predictive model
+        new_pred_model = self.create_pred_model(model_parms, layer_names)
+        # Re-load params
+        for k, v in pred_model_weights.items():
+            if v and k != 'ac_embedding':
+                new_pred_model.get_layer(k).set_weights(v)
+        # Save new model
+        save_model(new_pred_model, 
+                   self.model_path+'_upd'+model_ext+'.h5',
+                   save_format='h5')
+
+
+    def read_predictive_model(self, model_ext, parms_exts):
         # Load old model
-        model_path = os.path.join(parms['gl']['times_gen_path'],
-                                  parms['gl']['file'].split('.')[0]+model_ext+'.h5')
-        model = load_model(model_path)
+        model = load_model(self.model_path+model_ext+'.h5')
         model.summary()
-        model_weights = {layer.name: layer.get_weights() for layer in model.layers}
+        model_weights = {
+            layer.name: layer.get_weights() for layer in model.layers}
         
         # Read metadata data
-        data_path = os.path.join(
-            parms['gl']['times_gen_path'],
-            parms['gl']['file'].split('.')[0]+parms_exts+'_meta.json')
-        
-        with open(data_path) as file:
+        with open(self.model_path+parms_exts+'_meta.json') as file:
             parameters = json.load(file)
     
         parameters = {
@@ -40,7 +91,7 @@ class TimesPredictorUpdater():
         return model_weights, parameters
     
     
-    def create_pred_model(ac_weights, parms, names):
+    def create_pred_model(self, parms, names):
         # Input layer
         ac_input = Input(shape=(parms['ac_input_shape'][1], ), name='ac_input')
         features = Input(shape=(parms['features_shape'][1], 
@@ -48,9 +99,9 @@ class TimesPredictorUpdater():
                          name='features')
     
         # Embedding layer for categorical attributes
-        ac_embedding = Embedding(ac_weights.shape[0],
-                                 ac_weights.shape[1],
-                                 weights=[ac_weights],
+        ac_embedding = Embedding(self.embbeding.shape[0],
+                                 self.embbeding.shape[1],
+                                 weights=[self.embbeding],
                                  input_length=parms['ac_emb_inp_lenght'],
                                  trainable=False, name='ac_embedding')(ac_input)
     

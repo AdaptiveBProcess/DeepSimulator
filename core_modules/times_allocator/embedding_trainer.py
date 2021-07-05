@@ -39,6 +39,7 @@ class EmbeddingTrainer():
         self.file_name = params['file']
         self.embedded_path = params['embedded_path']
 
+
     def load_embbedings(self):
         # Embedded dimensions
         self.ac_weights = list()
@@ -47,10 +48,9 @@ class EmbeddingTrainer():
         if os.path.exists(os.path.join(self.embedded_path, ac_emb)):
             return self._read_embedded(self.index_ac, ac_emb)
         else:
-
             usr_idx = lambda x: self.usr_index.get(x['user'])
             self.log['usr_index'] = self.log.apply(usr_idx, axis=1)
-    
+                  
             dim_number = math.ceil(
                 len(list(itertools.product(*[list(self.ac_index.items()),
                                              list(self.usr_index.items())])))**0.25)
@@ -176,17 +176,6 @@ class EmbeddingTrainer():
     # =============================================================================
     # Support
     # =============================================================================
-    # @staticmethod
-    # def _indexing(log):
-    #     # Activities index creation
-    #     subsec_set = log.user.unique().tolist()
-    #     index = dict()
-    #     for i, _ in enumerate(subsec_set):
-    #         index[subsec_set[i]] = i + 1
-    #     index['Start'] = 0
-    #     index['End'] = len(index)
-    #     index_inv = {v: k for k, v in index.items()}
-    #     return index, index_inv
     
     @staticmethod
     def _reformat_matrix(index, weigths):

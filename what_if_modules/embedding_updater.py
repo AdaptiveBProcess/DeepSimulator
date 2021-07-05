@@ -4,60 +4,118 @@ Created on Tue Jun 15 11:26:44 2021
 
 @author: Manuel Camargo
 """
+import os
+import numpy as np
+import pandas as pd
+import json
+import math
+import random
+
+import utils.support as sup
+
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import ModelCheckpoint
+
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Embedding
+from tensorflow.keras.layers import Dot, Reshape
+
 
 class EmbeddingUpdater():
     """
     """
 
-    def __init__(self, num_categories, num_users, embedding_size):
-        self.num_categories = num_categories
-        self.num_users = num_users
-        self.embedding_size = embedding_size
+    def __init__(self, parms):
+        self.modif_model_path = os.path.join(
+            parms['gl']['embedded_path'], 
+            parms['gl']['modified_file'].split('.')[0]+'_emb.h5')
+        self.modif_embedding_path = os.path.join(
+            parms['gl']['embedded_path'],
+            'ac_'+parms['gl']['modified_file'].split('.')[0]+'.emb')
+        self.modif_gen_metadata_path = os.path.join(
+            parms['gl']['times_gen_path'], 
+            parms['gl']['modified_file'].split('.')[0]+'_diapr_meta.json')
+        self.complete_gen_metadata_path = os.path.join(
+            parms['gl']['times_gen_path'], 
+            parms['gl']['complete_file'].split('.')[0]+'_diapr_meta.json')
         self.modif_params = dict()
-    
-    def fit(self):
-        model, ac_weights, org_parms = self._read_original_model(parms, parms['gl']['file'])
-    
-    # def transform(self):
+        
+        self.output_file_path = os.path.join(
+            parms['gl']['embedded_path'],
+            'ac_' + parms['gl']['modified_file'].split('.')[0]+'_upd.emb')
+        self.output_model_path = os.path.join(
+            parms['gl']['embedded_path'],
+            parms['gl']['modified_file'].split('.')[0]+'_upd_emb.h5')
+
+    def execute_pipeline(self):
+        model, ac_weights, org_parms = self._read_original_model()
+        self.define_modif_parms(org_parms)
+        print(self.modif_params['m_tasks'])
+        # extend embedding
+        new_ac_weights = np.append(
+            ac_weights,
+            np.random.rand(len(self.modif_params['m_tasks']), 
+                           ac_weights.shape[1]), axis=0)
+        # Create new model
+        output_shape = model.get_layer('activity_embedding').output_shape
+        users_input_dim = model.get_layer('user_embedding').input_dim
+        num_emb_dimmensions = output_shape[2]
+        new_model = self.create_embedding_model(new_ac_weights.shape[0], 
+                                                users_input_dim, 
+                                                num_emb_dimmensions)
+        # Save weights of old model
+        temp_weights = {layer.name: layer.get_weights() 
+                        for layer in model.layers}
+        # load values in new model
+        for k, v in temp_weights.items():
+            if k == 'activity_embedding':
+                new_model.get_layer(k).set_weights([new_ac_weights])
+            elif v:
+                new_model.get_layer(k).set_weights(v)
+        # Re-train embedded model and update dimmensions
+        self.new_ac_weights = self.re_train_embedded(new_model,
+                                                     num_emb_dimmensions)
+        # Save results
+        matrix = self.reformat_matrix(
+            {v: k for k, v in org_parms['ac_index'].items()}, new_ac_weights)
+        sup.create_file_from_list(matrix, self.output_file_path)
+        
         
     
-    def _read_original_model(self, parms, event_log):
+    def _read_original_model(self):
         # Load old model
-        model_path = os.path.join(parms['gl']['embedded_path'],
-                            event_log.split('.')[0]+'_emb.h5')
-        model = load_model(model_path)
+        model = load_model(self.modif_model_path)
         model.summary()
         # Load embeddings    
-        emb_path = os.path.join(parms['gl']['embedded_path'],
-                             'ac_'+event_log.split('.')[0]+'.emb')
-        ac_weights = read_embedded(emb_path)
+        ac_weights = self.read_embedded(self.modif_embedding_path)
         # Read data
-        data_path = os.path.join(parms['gl']['times_gen_path'],
-                             event_log.split('.')[0]+'_diapr_meta.json')
-        with open(data_path) as file:
+        with open(self.modif_gen_metadata_path) as file:
             parameters = json.load(file)
         return model, ac_weights, parameters
 
-    def read_expected_data(self):
-        data_path = os.path.join(parms['gl']['times_gen_path'],
-                             'cvs_1000_complete.xes'.split('.')[0]+'_diapr_meta.json')
-        with open(data_path) as file:
+
+    def define_modif_parms(self, org_parms):
+        with open(self.complete_gen_metadata_path) as file:
             exp_parms = json.load(file)
         # ac and roles missings comparison
-        m_tasks = list(set(exp_parms['ac_index'].keys()) - set(org_parms['ac_index'].keys()))
-        m_tasks_assignment = list(filter(lambda x: x['task'] in m_tasks, exp_parms['roles_table']))
+        m_tasks = list(set(
+            exp_parms['ac_index'].keys()) - set(org_parms['ac_index'].keys()))
+        m_tasks_assignment = list(
+            filter(lambda x: x['task'] in m_tasks, exp_parms['roles_table']))
         # Save params
         self.modif_params['ac_index'] = org_parms['ac_index']
         self.modif_params['usr_index'] = org_parms['usr_index']
         self.modif_params['m_tasks'] = m_tasks
         self.modif_params['m_tasks_assignment'] = m_tasks_assignment
         self.modif_params['roles'] = exp_parms['roles']
-        self.modif_params['len_log'] = 1000
-        self.modif_params['embedded_path'] = parms['gl']['embedded_path']
-        self.modif_params['file'] = parms['gl']['file']
+        self.modif_params['len_log'] = org_parms['log_size']
+        # extend indexes
+        for task in m_tasks: 
+            self.modif_params['ac_index'][task] = len(
+                self.modif_params['ac_index'])
         
         
-    def create_embedding_model(self):
+    def create_embedding_model(self, num_cat, num_users, embedding_size):
         """Model to embed activities and users using the functional API"""
     
         # Both inputs are 1-dimensional
@@ -66,7 +124,7 @@ class EmbeddingUpdater():
     
         # Embedding the activity (shape will be (None, 1, embedding_size))
         activity_embedding = Embedding(name='activity_embedding',
-                                       input_dim=num_categories,
+                                       input_dim=num_cat,
                                        output_dim=embedding_size)(activity)
     
         # Embedding the user (shape will be (None, 1, embedding_size))
@@ -88,15 +146,13 @@ class EmbeddingUpdater():
     
         return model
 
-    def re_train_embedded(modif_params, model, dim_number):
+    def re_train_embedded(self, model, dim_number):
         """Carry out the training of the embeddings"""
         # Iterate through each book
-        vec, cl = vectorize_input(modif_params, negative_ratio=2)
+        vec, cl = self.vectorize_input(self.modif_params, negative_ratio=2)
         
         # Output file
-        output_file_path = os.path.join(modif_params['embedded_path'],
-                                        modif_params['file'].split('.')[0]+
-                                        '_upd_emb.h5')
+        output_file_path = os.path.join(self.output_model_path)
         # Saving
         model_checkpoint = ModelCheckpoint(output_file_path,
                                             monitor='val_loss',
@@ -114,7 +170,7 @@ class EmbeddingUpdater():
         # Extract embeddings
         return model.get_layer('activity_embedding').get_weights()[0]
     
-    
+    @staticmethod
     def vectorize_input(modif_params, negative_ratio=1.0):
         """Generate batches of samples for training"""
         pairs = list()
@@ -165,7 +221,7 @@ class EmbeddingUpdater():
 # =============================================================================
 #   Support modules
 # =============================================================================
-
+    @staticmethod
     def read_embedded(filename):
         """Loading of the embedded matrices.
         parms:
@@ -179,7 +235,7 @@ class EmbeddingUpdater():
         weights = weights.drop(columns=[0, 1])
         return weights.to_numpy()
 
-        
+    @staticmethod
     def reformat_matrix(index, weigths):
         """Reformating of the embedded matrix for exporting.
         Args:
