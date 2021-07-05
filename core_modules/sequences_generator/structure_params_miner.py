@@ -4,15 +4,11 @@ Created on Fri Mar  6 20:47:09 2020
 
 @author: Manuel Camargo
 """
-import pandas as pd
-import itertools
-import utils.support as sup
 import traceback
 
 from extraction import log_replayer as rpl
 from extraction import interarrival_definition as arr
 from extraction import gateways_probabilities as gt
-from extraction import role_discovery as rl
 from extraction import schedule_tables as sch
 from extraction import tasks_evaluator as te
 

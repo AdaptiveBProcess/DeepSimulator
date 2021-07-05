@@ -13,6 +13,8 @@ import numpy as np
 
 from keras.models import Model
 from keras.layers import Input, Embedding, Dot, Reshape
+from tensorflow.keras.callbacks import ModelCheckpoint
+
 
 import utils.support as sup
 
@@ -21,7 +23,7 @@ class EmbeddingTrainer():
     This class evaluates the inter-arrival times
     """
 
-    def __init__(self, params, log, ac_index, index_ac):
+    def __init__(self, params, log, ac_index, index_ac, usr_index, index_usr):
         """Main method of the embedding training module.
         Args:
             parameters (dict): parameters for training the embeddeding network.
@@ -30,11 +32,13 @@ class EmbeddingTrainer():
         """
         # Define the number of dimensions as the 4th root of the # of categories
         self.log = log.copy()
-        self.log['user'] = self.log['user'].fillna('sys')
         self.ac_index = ac_index
         self.index_ac = index_ac
+        self.usr_index = usr_index
+        self.index_usr = index_usr
         self.file_name = params['file']
         self.embedded_path = params['embedded_path']
+
 
     def load_embbedings(self):
         # Embedded dimensions
@@ -44,11 +48,9 @@ class EmbeddingTrainer():
         if os.path.exists(os.path.join(self.embedded_path, ac_emb)):
             return self._read_embedded(self.index_ac, ac_emb)
         else:
-            self.usr_index, self.index_usr = self._indexing(self.log)
-
             usr_idx = lambda x: self.usr_index.get(x['user'])
             self.log['usr_index'] = self.log.apply(usr_idx, axis=1)
-    
+                  
             dim_number = math.ceil(
                 len(list(itertools.product(*[list(self.ac_index.items()),
                                              list(self.usr_index.items())])))**0.25)
@@ -76,9 +78,22 @@ class EmbeddingTrainer():
         model.summary()
     
         vec, cl = self._vectorize_input(self.log, negative_ratio=2)
+        
+        # Output file
+        output_file_path = os.path.join(self.embedded_path,
+                             self.file_name.split('.')[0]+
+                                        '_emb.h5')
+        # Saving
+        model_checkpoint = ModelCheckpoint(output_file_path,
+                                            monitor='val_loss',
+                                            verbose=0,
+                                            save_best_only=True,
+                                            save_weights_only=False,
+                                            mode='auto')
         # Train
         model.fit(x=vec, y=cl,
                   validation_split=0.2,
+                  callbacks=[model_checkpoint],
                   epochs=100,
                   verbose=2)
     
@@ -161,17 +176,6 @@ class EmbeddingTrainer():
     # =============================================================================
     # Support
     # =============================================================================
-    @staticmethod
-    def _indexing(log):
-        # Activities index creation
-        subsec_set = log.user.unique().tolist()
-        index = dict()
-        for i, _ in enumerate(subsec_set):
-            index[subsec_set[i]] = i + 1
-        index['Start'] = 0
-        index['End'] = len(index)
-        index_inv = {v: k for k, v in index.items()}
-        return index, index_inv
     
     @staticmethod
     def _reformat_matrix(index, weigths):

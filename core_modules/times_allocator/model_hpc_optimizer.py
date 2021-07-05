@@ -77,6 +77,8 @@ class ModelHPCOptimizer():
         configs_files = list()
         for config in self.space:
             config['ac_index'] = self.ac_index
+            config['model_type'] = self.parms['model_type']
+            config['all_r_pool'] = self.parms['all_r_pool']
             conf_file = sup.file_id(prefix='CNF_', extension='.json')
             sup.create_json(
                 config, os.path.join(self.temp_output, 'opt_parms', conf_file))

@@ -2,7 +2,8 @@ name: deep_sim3
 channels:
   - defaults
 dependencies:
-  - spyder==4.2.0
+  - python==3.8.5
+  - spyder==5.0.0
   - pandas
   - lxml
   - matplotlib

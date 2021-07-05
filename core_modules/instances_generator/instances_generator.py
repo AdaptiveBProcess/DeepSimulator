@@ -12,6 +12,7 @@ import pandas as pd
 import readers.log_splitter as ls
 from core_modules.instances_generator import dl_generators as dl
 from core_modules.instances_generator import pdf_generators as pdf
+from core_modules.instances_generator import prophet_generator as prf
 from core_modules.instances_generator import multi_pdf_generators as mpdf
 
 
@@ -27,7 +28,7 @@ class InstancesGenerator():
         self.tasks = self._analize_first_tasks(process_graph)
         self.one_timestamp = parms['read_options']['one_timestamp']
         self.timeformat = parms['read_options']['timeformat']
-        
+
         self.ia_times = self._mine_interarrival_time(self.log_train,
                                                      self.tasks,
                                                      self.one_timestamp)
@@ -36,30 +37,50 @@ class InstancesGenerator():
                                                      self.one_timestamp)
         self.parms = parms
         self._get_generator(method)
-        
+
+
     def generate(self, num_instances, start_time):
         return self.generator.generate(num_instances, start_time)
 
+
     def _get_generator(self, method):
         if method == 'pdf':
-            self.generator = pdf.PDFGenerator(self.ia_times, 
+            self.generator = pdf.PDFGenerator(self.ia_times,
                                               self.ia_valdn)
         elif method == 'dl':
-            self.generator = dl.DeepLearningGenerator(self.ia_times, 
-                                                      self.ia_valdn, 
+            self.generator = dl.DeepLearningGenerator(self.ia_times,
+                                                      self.ia_valdn,
                                                       self.parms)
         elif method == 'mul_pdf':
-            self.generator = mpdf.MultiPDFGenerator(self.ia_times, 
-                                                    self.ia_valdn, 
+            self.generator = mpdf.MultiPDFGenerator(self.ia_times,
+                                                    self.ia_valdn,
                                                     self.parms)
+        elif method == 'prophet':
+            self.generator = prf.ProphetGenerator(self.log,
+                                                  self.log_valdn,
+                                                  self.parms)
+        elif method == 'test':
+            self.generator = self.OriginalInterarrival()
         else:
             raise ValueError('Unexistent generator')
+
+
+    class OriginalInterarrival():
+        
+        def generate(self, log, start_time):
+            i_arr = log.groupby('caseid').start_timestamp.min().reset_index()
+            i_arr.rename(columns={'start_timestamp': 'timestamp'}, inplace=True)
+            i_arr.drop(columns='caseid', inplace=True)
+            i_arr.sort_values('timestamp', inplace=True)
+            i_arr['caseid'] = i_arr.index + 1
+            i_arr['caseid'] = i_arr['caseid'].astype(str)
+            i_arr['caseid'] = 'Case' + i_arr['caseid']
+            return i_arr
 
 # =============================================================================
 # Support modules
 # =============================================================================
-    
-    
+
     @staticmethod
     def _mine_interarrival_time(log_train, tasks, one_ts):
         """
@@ -79,7 +100,6 @@ class InstancesGenerator():
             .reset_index()
             .rename(columns={ordering_field:'timestamp'}))
         # group by day and calculate inter-arrival
-        # arrival_timestamps['date'] = arrival_timestamps['timestamp'].dt.floor('d')
         inter_arrival_times = list()
         # for key, group in arrival_timestamps.groupby('date'):
         daily_times = arrival_timestamps.sort_values('timestamp').to_dict('records')
@@ -96,6 +116,7 @@ class InstancesGenerator():
                  'daytime': time,
                  'weekday': daily_times[i]['timestamp'].weekday()})
         return pd.DataFrame(inter_arrival_times)
+
 
     def _analize_first_tasks(self, process_graph) -> list():
         """
@@ -154,3 +175,6 @@ class InstancesGenerator():
                           .reset_index(drop=True))
         self.log_train = (train.sort_values(key, ascending=True)
                           .reset_index(drop=True))
+        #--
+        # self.log_train.to_csv('log_train_manual.csv')
+        # self.log_valdn.to_csv('log_valdn_manual.csv')
