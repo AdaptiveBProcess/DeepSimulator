@@ -10,7 +10,7 @@ import numpy as np
 from collections import deque
 import uuid
 
-import keras.utils as ku
+from keras.utils import np_utils as ku
 from operator import itemgetter
 from queue import PriorityQueue
 import queue

@@ -21,7 +21,7 @@ from multiprocessing import Pool
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from pickle import load
-import keras.utils as ku
+from keras.utils import np_utils as ku
 
 
 class NoIntercasesPredictor():

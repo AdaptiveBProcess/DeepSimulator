@@ -16,7 +16,7 @@ from datetime import datetime
 
 
 from sklearn.preprocessing import MaxAbsScaler
-import keras.utils as ku
+from keras.utils import np_utils as ku
 from nltk.util import ngrams
 import utils.support as sup
 
