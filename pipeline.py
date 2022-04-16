@@ -30,11 +30,11 @@ def main(argv):
     # parms setting manual fixed or catched by console
     if not argv:
         # Event-log parms
-        parms['gl']['file'] = 'confidential_2000_modif_upd.xes'
+        parms['gl']['file'] = 'Production.xes'
         parms['gl']['update_gen'] = False
         parms['gl']['update_ia_gen'] = False
         parms['gl']['update_mpdf_gen'] = False
-        parms['gl']['update_times_gen'] = False
+        parms['gl']['update_times_gen'] = True
         parms['gl']['save_models'] = True
         parms['gl']['evaluate'] = True
         parms['gl']['mining_alg'] = 'sm3'
@@ -78,16 +78,17 @@ def main(argv):
     # Times allocator parameters
     parms['t_gen'] = dict()
     parms['t_gen']['imp'] = 1
-    parms['t_gen']['max_eval'] = 12
+    parms['t_gen']['emb_method'] = "emb_dot_product" # emb_dot_product, emb_w2vec
+    parms['t_gen']['max_eval'] = 1
     parms['t_gen']['batch_size'] = 32 # Usually 32/64/128/256
-    parms['t_gen']['epochs'] = 200
+    parms['t_gen']['epochs'] = 2
     parms['t_gen']['n_size'] = [5, 10, 15]
     parms['t_gen']['l_size'] = [50, 100] 
     parms['t_gen']['lstm_act'] = ['selu', 'tanh']
     parms['t_gen']['dense_act'] = ['linear']
     parms['t_gen']['optim'] = ['Nadam']
     parms['t_gen']['model_type'] = 'dual_inter' # basic, inter, dual_inter, inter_nt
-    parms['t_gen']['opt_method'] = 'rand_hpc' # bayesian, rand_hpc
+    parms['t_gen']['opt_method'] = 'bayesian' # bayesian, rand_hpc
     parms['t_gen']['all_r_pool'] = True # only intercase features
     parms['t_gen']['reschedule'] = False # reschedule according resource pool ocupation
     parms['t_gen']['rp_similarity'] = 0.80 # Train models
