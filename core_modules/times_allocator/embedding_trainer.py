@@ -10,13 +10,13 @@ import itertools
 import math
 import pandas as pd
 import numpy as np
-
+import utils.support as sup
 from keras.models import Model
 from keras.layers import Input, Embedding, Dot, Reshape
 from tensorflow.keras.callbacks import ModelCheckpoint
 
 
-import utils.support as sup
+
 
 class EmbeddingTrainer():
     """

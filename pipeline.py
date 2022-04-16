@@ -78,7 +78,7 @@ def main(argv):
     # Times allocator parameters
     parms['t_gen'] = dict()
     parms['t_gen']['imp'] = 1
-    parms['t_gen']['emb_method'] = "emb_dot_product" # emb_dot_product, emb_w2vec
+    parms['t_gen']['emb_method'] = "emb_w2vec" # emb_dot_product, emb_w2vec
     parms['t_gen']['max_eval'] = 1
     parms['t_gen']['batch_size'] = 32 # Usually 32/64/128/256
     parms['t_gen']['epochs'] = 2
