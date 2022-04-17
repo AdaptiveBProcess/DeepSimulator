@@ -12,6 +12,7 @@ import gensim
 import os
 import pandas as pd
 import numpy as np
+import utils.support as sup
 
 
 """
@@ -54,15 +55,24 @@ class EmbeddingWord2vec():
             return self._read_embedded(self.index_ac, ac_emb)
         else:
             activities = lr.get_sentences_XES(self.file_name)
-            EmbeddingWord2vec.learn(self,activities,4)
+            EmbeddingWord2vec.learn(self,activities,6)
+            print(type(self.ac_weights))
+            print(type(self.index_ac))
+            matrix = self._reformat_matrix(self.index_ac, self.ac_weights)
+            sup.create_file_from_list(
+                matrix,
+                os.path.join(self.embedded_path,
+                             'ac_W2V_' + self.file_name.split('.')[0] + '.emb'))
+            return self.ac_weights
 
     def learn(self,sent, vectorsize):
+        self.ac_weights = list()
         # train model
         model = gensim.models.Word2Vec(sent, vector_size = vectorsize,  min_count=0)
         nrEpochs = 10
         for epoch in range(nrEpochs):
             if epoch % 2 == 0:
-                print('Now training epoch %s' % epoch)
+                print('Now training epoch %s word2vec' % epoch)
             model.train(sent, start_alpha=0.025, epochs=nrEpochs, total_examples=model.corpus_count)
             model.alpha -= 0.002  # decrease the learning rate
             model.min_alpha = model.alpha  # fix the learning rate, no decay
@@ -89,7 +99,8 @@ class EmbeddingWord2vec():
         # print(model.wv['SettleConditionsWithSupplier'])
         # print(model.wv['SettleDisputeWithSupplier'])
 
-        model.wv.save(self.embedded_path + '/A2VVS' + str(vectorsize) + '.model')
+        self.ac_weights = model.wv.vectors
+        # model.wv.save(self.embedded_path + '/A2VVS' + str(vectorsize) + '.emb')
 
     def learnResources(rol, vectorsize):
         # train model
@@ -97,7 +108,7 @@ class EmbeddingWord2vec():
         nrEpochs = 10
         for epoch in range(nrEpochs):
             if epoch % 2 == 0:
-                print('Now training epoch %s' % epoch)
+                print('Now training epoch %s word2vec' % epoch)
             model.train(rol, start_alpha=0.025, epochs=nrEpochs, total_examples=model.corpus_count)
             model.alpha -= 0.002  # decrease the learning rate
             model.min_alpha = model.alpha  # fix the learning rate, no decay
@@ -113,7 +124,8 @@ class EmbeddingWord2vec():
         # print(model.wv['KimPassa'])
         # print(model.wv['AnnaKaufmann'])
         # print(model.wv['FjodorKowalski'])
-        model.wv.save('/content/drive/MyDrive/MBIT/DeepLearning/' + 'A2VVS' + str(vectorsize) + '.model')
+        model.wv.vectors.save('/content/drive/MyDrive/MBIT/DeepLearning/' + 'A2VVS' + str(vectorsize) + '.emb')
+
 
     def _read_embedded(self, index, filename):
         """Loading of the embedded matrices.
@@ -132,3 +144,19 @@ class EmbeddingWord2vec():
             return np.array(weights)
         else:
             raise KeyError('Inconsistency in the number of activities')
+
+    @staticmethod
+    def _reformat_matrix(index, weigths):
+            """Reformating of the embedded matrix for exporting.
+            Args:
+                index: index of activities or users.
+                weigths: matrix of calculated coordinates.
+            Returns:
+                matrix with indexes.
+            """
+            matrix = list()
+            for i, _ in enumerate(index):
+                data = [i, index[i]]
+                data.extend(weigths[i])
+                matrix.append(data)
+            return matrix

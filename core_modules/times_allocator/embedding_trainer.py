@@ -58,7 +58,8 @@ class EmbeddingTrainer():
         
             if not os.path.exists(self.embedded_path):
                 os.makedirs(self.embedded_path)
-        
+            print(type(self.ac_weights))
+            print(type(self.index_ac))
             matrix = self._reformat_matrix(self.index_ac, self.ac_weights)
             sup.create_file_from_list(
                 matrix,

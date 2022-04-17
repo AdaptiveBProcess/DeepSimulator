@@ -54,3 +54,19 @@ class Embedder():
             return np.array(weights)
         else:
             raise KeyError('Inconsistency in the number of activities')
+
+    @staticmethod
+    def _reformat_matrix(index, weigths):
+            """Reformating of the embedded matrix for exporting.
+            Args:
+                index: index of activities or users.
+                weigths: matrix of calculated coordinates.
+            Returns:
+                matrix with indexes.
+            """
+            matrix = list()
+            for i, _ in enumerate(index):
+                data = [i, index[i]]
+                data.extend(weigths[i])
+                matrix.append(data)
+            return matrix
