@@ -1,20 +1,21 @@
 name: deep_sim3
 channels:
+  - conda-forge
   - defaults
 dependencies:
-  - python==3.8.5
-  - spyder==5.0.0
-  - pandas
-  - lxml
-  - matplotlib
-  - nltk
-  - scikit-learn
-  - ipywidgets
+  - python=3.8
+  - fbprophet=0.7.1
   - pip:
-    - hyperopt
+    - pandas
+    - nltk==3.7
+    - networkx==2.5
+    - numpy==1.19.2
+    - sympy==1.7.1
+    - scikit-learn==1.1.2
+    - hyperopt==0.2.5
     - jellyfish
-    - keras
-    - pm4py
-    - tensorflow
-    - opyenxes
+    - tensorflow==2.4.0
+    - keras==2.4.3
+    - opyenxes==0.3.0
+    - graphviz==0.15
     - git+http://github.com/Mcamargo85/support_modules.git
