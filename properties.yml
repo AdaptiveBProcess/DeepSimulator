@@ -1,0 +1,24 @@
+read_options:
+  timeformat: "%Y-%m-%dT%H:%M:%S.%f"
+  column_names:
+    'Case ID': caseid
+    'Activity': task
+    'lifecycle:transition': event_type
+    'Resource': user
+  one_timestamp: false
+  filter_d_attrib: true
+event_logs_path: input_files\event_logs
+bpmn_models: input_files\bpmn_models
+embedded_path: input_files\embedded_matix
+ia_gen_path: input_files\ia_gen_models
+seq_flow_gen_path: input_files\seq_flow_gen_models
+times_gen_path: input_files\times_gen_models
+sm1_path: external_tools\splitminer\splitminer.jar
+sm2_path: external_tools\splitminer2\sm2.jar
+sm3_path: external_tools\splitminer3\bpmtk.jar
+bimp_path: external_tools\bimp\qbp-simulator-engine.jar
+align_path: external_tools\proconformance\ProConformance2.jar
+calender_path: external_tools\calenderimp\CalenderImp.jar
+simulator: bimp
+
+
