@@ -122,11 +122,11 @@ class TimesModelOptimizer():
         # Save results
         try:
             results = (pd.DataFrame(self.bayes_trials.results)
-                       .sort_values('loss', ascending=bool))
-            result = results[results.status=='ok'].head(1).iloc[0]
+                       .sort_values('loss', ascending=True))
+            result = results[results.status == 'ok'].head(1).iloc[0]
             self.best_output = result.output
             self.best_loss = result.loss
-            self.best_parms = {k: self.parms[k][v] for k,v in best.items()}
+            self.best_parms = {k: self.parms[k][v] for k, v in best.items()}
         except Exception as e:
             print(e)
             pass
