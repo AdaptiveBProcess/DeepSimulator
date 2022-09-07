@@ -7,15 +7,12 @@ Created on Sun Apr 25 14:40:36 2021
 
 # -*- coding: utf-8 -*-
 from support_modules import log_reader as lr
-from support_modules import role_discovery as rd
 # from support_modules import role_discovery as rd
 import gensim
 import os
 import pandas as pd
 import numpy as np
 import utils.support as sup
-import math
-import itertools
 
 
 """
@@ -28,7 +25,7 @@ Created on Wed Nov 21 21:23:55 2018
 
 
 
-class EmbeddingWord2vec():
+class EmbeddingRoles():
     """
     This class evaluates the inter-arrival times
     """
@@ -52,35 +49,20 @@ class EmbeddingWord2vec():
     def load_embbedings(self):
         # Embedded dimensions
         self.ac_weights = list()
-        self.ac_weights2 = list()
-        self.ac_weights3 = list()
         # Load embedded matrix
         ac_emb = 'ac_' + self.file_name.split('.')[0] + '.emb'
         if os.path.exists(os.path.join(self.embedded_path, ac_emb)):
             return self._read_embedded(self.index_ac, ac_emb)
         else:
-            times = lr.masterduration(self.file_name)
             activities = lr.get_sentences_XES(self.file_name)
-            roles = rd.ResourcePoolAnalyser.get_roles_XES(self.file_name)
-            dim_number = math.ceil(
-                len(list(itertools.product(*[list(self.ac_index.items()),
-                                             list(self.usr_index.items())]))) ** 0.25)
-            EmbeddingWord2vec.learn(self,activities,dim_number)
-            EmbeddingWord2vec.learnResources(self,roles, dim_number)
-            EmbeddingWord2vec.learnTimes(self, times, dim_number)
-            print(np.shape(self.ac_weights))
-            print(self.ac_weights)
-            print(np.shape(self.ac_weights2))
-            print(self.ac_weights2)
-            print(np.shape(self.ac_weights3))
-            print(self.ac_weights3)
-            self.ac_weights = self.ac_weights*self.ac_weights2
-            self.ac_weights = self.ac_weights*self.ac_weights3
+            EmbeddingWord2vec.learn(self,activities,6)
+            print(type(self.ac_weights))
+            print(type(self.index_ac))
             matrix = self._reformat_matrix(self.index_ac, self.ac_weights)
             sup.create_file_from_list(
                 matrix,
                 os.path.join(self.embedded_path,
-                             'ac_W2V_' + self.file_name.split('.')[0] + '.emb'))
+                             'ac_W2V_Roles' + self.file_name.split('.')[0] + '.emb'))
             return self.ac_weights
 
     def learn(self,sent, vectorsize):
@@ -120,9 +102,9 @@ class EmbeddingWord2vec():
         self.ac_weights = model.wv.vectors
         # model.wv.save(self.embedded_path + '/A2VVS' + str(vectorsize) + '.emb')
 
-    def learnResources(self,rol, vectorsize):
+    def learnResources(rol, vectorsize):
         # train model
-        model = gensim.models.Word2Vec(rol, vector_size = vectorsize,  min_count=0)
+        model = gensim.models.Word2Vec(rol, vectorsize, window=3, min_count=0)
         nrEpochs = 10
         for epoch in range(nrEpochs):
             if epoch % 2 == 0:
@@ -142,19 +124,7 @@ class EmbeddingWord2vec():
         # print(model.wv['KimPassa'])
         # print(model.wv['AnnaKaufmann'])
         # print(model.wv['FjodorKowalski'])
-        self.ac_weights2 = model.wv.vectors
-
-    def learnTimes(self,times, vectorsize):
-        # train model
-        model = gensim.models.Word2Vec(times, vector_size = vectorsize,  min_count=0)
-        nrEpochs = 10
-        for epoch in range(nrEpochs):
-            if epoch % 2 == 0:
-                print('Now training epoch %s word2vec' % epoch)
-            model.train(times, start_alpha=0.025, epochs=nrEpochs, total_examples=model.corpus_count)
-            model.alpha -= 0.002  # decrease the learning rate
-            model.min_alpha = model.alpha  # fix the learning rate, no decay
-        self.ac_weights3 = model.wv.vectors
+        model.wv.vectors.save('/content/drive/MyDrive/MBIT/DeepLearning/' + 'A2VVS' + str(vectorsize) + '.emb')
 
 
     def _read_embedded(self, index, filename):

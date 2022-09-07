@@ -107,15 +107,24 @@ class EmbeddingTrainer():
         pairs = list()
         for i in range(0, len(self.log)):
             # Iterate through the links in the book
+
+
             pairs.append((self.ac_index[self.log.iloc[i]['task']],
                           self.usr_index[self.log.iloc[i]['user']]))
-        
+        print(len(self.log))
+
+        print(self.ac_index)
+        print(self.usr_index)
+        print(self.log.processing_time)
+        print(pairs)
+        print(np.shape(pairs))
         n_positive = math.ceil(len(self.log)/2)
         batch_size = n_positive * (1 + negative_ratio)
         batch = np.zeros((batch_size, 3))
         pairs_set = set(pairs)
         activities = list(self.ac_index.keys())
         users = list(self.usr_index.keys())
+
         # This creates a generator
         # randomly choose positive examples
         idx = 0
@@ -149,6 +158,7 @@ class EmbeddingTrainer():
         # Both inputs are 1-dimensional
         activity = Input(name='activity', shape=[1])
         user = Input(name='user', shape=[1])
+       # times = Input(name='times', shape=[1])
     
         # Embedding the activity (shape will be (None, 1, embedding_size))
         activity_embedding = Embedding(name='activity_embedding',
@@ -159,6 +169,11 @@ class EmbeddingTrainer():
         user_embedding = Embedding(name='user_embedding',
                                    input_dim=len(self.usr_index),
                                    output_dim=embedding_size)(user)
+
+        # Embedding the times (shape will be (None, 1, embedding_size))
+        #times_embedding = Embedding(name='times_embedding',
+                                   #input_dim=len(self.),
+                                  # output_dim=embedding_size)(times)
     
         # Merge the layers with a dot product
         # along the second axis (shape will be (None, 1, 1))

@@ -30,11 +30,11 @@ def main(argv):
     # parms setting manual fixed or catched by console
     if not argv:
         # Event-log parms
-        parms['gl']['file'] = 'Production.xes'
+        parms['gl']['file'] = 'ConsultaDataMining201618.xes'# ConsultaDataMining201618.xes, inter, dual_inter, inter_nt
         parms['gl']['update_gen'] = False
         parms['gl']['update_ia_gen'] = False
         parms['gl']['update_mpdf_gen'] = False
-        parms['gl']['update_times_gen'] = False
+        parms['gl']['update_times_gen'] = True
         parms['gl']['save_models'] = True
         parms['gl']['evaluate'] = True
         parms['gl']['mining_alg'] = 'sm3'
@@ -78,10 +78,10 @@ def main(argv):
     # Times allocator parameters
     parms['t_gen'] = dict()
     parms['t_gen']['imp'] = 1
-    parms['t_gen']['emb_method'] = "emb_w2vec" # emb_dot_product, emb_w2vec
-    parms['t_gen']['max_eval'] = 12
+    parms['t_gen']['emb_method'] = "emb_dot_product" # emb_dot_product, emb_w2vec
+    parms['t_gen']['max_eval'] = 12 # 12,1 for test
     parms['t_gen']['batch_size'] = 32 # Usually 32/64/128/256
-    parms['t_gen']['epochs'] = 200
+    parms['t_gen']['epochs'] = 200 # 200,2 for test
     parms['t_gen']['n_size'] = [5, 10, 15]
     parms['t_gen']['l_size'] = [50, 100] 
     parms['t_gen']['lstm_act'] = ['selu', 'tanh']

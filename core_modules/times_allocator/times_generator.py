@@ -185,6 +185,9 @@ class TimesGenerator():
         # indexes creation
         self.ac_index, self.index_ac = self._indexing(self.log.data, 'task')
         self.usr_index, self.index_usr = self._indexing(self.log.data, 'user')
+        # self.pr_times = self._indexing(self.log.data,'processing_time')
+        print(self.ac_index)
+        # print(self.pr_times)
         # replay
         self._replay_process()
 

@@ -4,6 +4,7 @@ from scipy.stats import pearsonr
 import networkx as nx
 from operator import itemgetter
 import pandas as pd
+from lxml import etree
 
 
 
@@ -23,6 +24,30 @@ class ResourcePoolAnalyser():
         self.users = {val: i for i, val in enumerate(self.data.user.unique())}
         
         self.roles, self.resource_table = self.discover_roles()
+
+
+    def get_roles_XES(filename):
+        texts = []
+
+        tree = etree.parse('input_files/event_logs/'+filename)
+        root = tree.getroot()
+        for element in root.iter():
+            tag = element.tag.split('}')[1]
+            if (tag == "trace"):
+                wordslist = []
+                tagslist = []
+                for childelement in element.iterchildren():
+                    ctag = childelement.tag.split('}')[1]
+                    if (ctag == "string" and childelement.get('key') == 'concept:name'):
+                        doc_name = childelement.get('value')
+                    elif (ctag == "event"):
+                        for grandchildelement in childelement.iterchildren():
+                            if (grandchildelement.get('key') == 'concept:name'):
+                                event_name = grandchildelement.get('value')
+                                #    print(event_name)
+                                wordslist.append(event_name.replace(' ', ''))
+                texts.append(wordslist)
+        return texts
 
     def read_resource_pool(self, log):
         if isinstance(log, pd.DataFrame):
@@ -114,6 +139,8 @@ class ResourcePoolAnalyser():
                 resource_table.append({'role': record['role'],
                                        'resource': member})
         return records, resource_table
+
+    from lxml import etree
 
     # # == support
     # def random_color(size):

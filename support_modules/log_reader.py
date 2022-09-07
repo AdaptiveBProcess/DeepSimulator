@@ -9,6 +9,9 @@ from support_modules import support as sup
 import pandas as pd
 from operator import itemgetter
 from lxml import etree
+import numpy as np
+from datetime import datetime
+from lxml import etree
 
 
 
@@ -30,6 +33,7 @@ class LogReader(object):
         self.data = list()
         self.raw_data = list()
         self.load_data_from_file()
+
 
     def load_data_from_file(self):
         """
@@ -429,3 +433,101 @@ def get_sentences_XES(filename):
                                 wordslist.append(event_name.replace(' ', ''))
                 texts.append(wordslist)
         return texts
+
+
+def get_times_XES(filename):
+    texts = []
+    tree = etree.parse('input_files/event_logs/'+filename)
+    root = tree.getroot()
+    print(root)
+    for element in root.iter():
+        tag = element.tag.split('}')[1]
+        if (tag == "trace"):
+            wordslist = []
+            tagslist = []
+            for childelement in element.iterchildren():
+                ctag = childelement.tag.split('}')[1]
+                if (ctag == "string" and childelement.get('key') == 'time:timestamp'):
+                    doc_name = childelement.get('value')
+                elif (ctag == "event"):
+                    for grandchildelement in childelement.iterchildren():
+                        if (grandchildelement.get('key') == 'time:timestamp'):
+                            event_name = grandchildelement.get('value')
+                            #    print(event_name)
+                            wordslist.append(event_name.replace(' ', ''))
+            texts.append(wordslist)
+    return texts
+
+
+def masterduration(filename):
+    duration = generateduration(filename)
+    array = equalObs(duration, 34)
+    discretedur = discreteduration(array,filename)
+    return discretedur
+
+
+def generateduration(filename):
+    times = get_times_XES(filename)
+    dataset = []
+    duration = []
+    i = 0
+    while i < len(times):
+        j = 0
+        trace = list()
+        duration.append(trace)
+        while j + 1 < len(times[i]):
+            a = datetime.now().strptime(times[i][j + 1], "%Y-%m-%dT%H:%M:%S.%f%z")
+            b = datetime.now().strptime(times[i][j], "%Y-%m-%dT%H:%M:%S.%f%z")
+            time = a - b
+            time_d_float = time.total_seconds()
+            j = j + 1
+            trace.append(time_d_float)
+            dataset.append(time_d_float)
+        i = i + 1
+    return dataset
+
+
+def equalObs(x, nbin):
+    nlen = len(x)
+    return np.interp(np.linspace(0, nlen, nbin + 1),
+                     np.arange(nlen),
+                     np.sort(x))
+
+
+def discreteduration(arraydur,filename):
+    times = get_times_XES(filename)
+    dataset = []
+    duration = []
+    i = 0
+    while i < len(times):
+        j = 0
+        trace = list()
+        duration.append(trace)
+        while j + 1 < len(times[i]):
+            a = datetime.now().strptime(times[i][j + 1], "%Y-%m-%dT%H:%M:%S.%f%z")
+            b = datetime.now().strptime(times[i][j], "%Y-%m-%dT%H:%M:%S.%f%z")
+            time = a - b
+            time_d_float = np.digitize(time.total_seconds(), arraydur)
+            j = j + 1
+            trace.append(time_d_float)
+            dataset.append(time_d_float)
+        i = i + 1
+    return duration
+
+
+def _indexing(log, feat):
+        log = pd.DataFrame(log)
+        # Activities index creation
+        if feat == 'task':
+            log = log[~log[feat].isin(['Start', 'End'])]
+        else:
+            log[feat] = log[feat].fillna('sys')
+        subsec_set = log[feat].unique().tolist()
+        subsec_set = [x for x in subsec_set if not x in ['Start', 'End']]
+        index = dict()
+        for i, _ in enumerate(subsec_set):
+            index[subsec_set[i]] = i + 1
+        index['Start'] = 0
+        index['End'] = len(index)
+        index_inv = {v: k for k, v in index.items()}
+        return index, index_inv
