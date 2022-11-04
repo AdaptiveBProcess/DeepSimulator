@@ -7,6 +7,7 @@ import copy
 import shutil
 
 import pandas as pd
+import numpy as np
 from operator import itemgetter
 
 import utils.support as sup
@@ -21,6 +22,13 @@ from core_modules.instances_generator import instances_generator as gen
 from core_modules.sequences_generator import seq_generator as sg
 from core_modules.times_allocator import times_generator as ta
 
+from sklearn.decomposition import PCA, TruncatedSVD, DictionaryLearning
+from sklearn.cluster import KMeans, AffinityPropagation, MeanShift, estimate_bandwidth
+from sklearn.mixture import GaussianMixture
+from sklearn.metrics import silhouette_score, calinski_harabasz_score
+
+import warnings
+warnings.filterwarnings("ignore")
 
 class DeepSimulator():
     """
@@ -137,11 +145,145 @@ class DeepSimulator():
                              self.parms['gl']['file'].split('.')[0] + '_' + str(r_num + 1) + '.csv'),
             index=False)
 
+    def clustering_method(self, dataframe, method, K=3):
+    
+        cols = [x for x in dataframe.columns if 'id_' in x]
+        X = dataframe[cols]
+
+        if method == 'kmeans':
+            kmeans = KMeans(n_clusters = K, random_state=30).fit(X)
+            dataframe['cluster'] = kmeans.labels_
+        elif method == 'mean_shift':
+            ms = MeanShift(bandwidth=K, bin_seeding=True, random_state=30).fit(X)
+            dataframe['cluster'] = ms.labels_
+        elif method == 'gaussian_mixture':
+            dataframe['cluster'] = GaussianMixture(n_components=K, covariance_type='spherical', random_state=30).fit_predict(X)
+            
+        return dataframe
+
+    def decomposition_method(self, dataframe, method):
+    
+        cols = [x for x in dataframe.columns if 'id_' in x]
+        X = dataframe[cols]
+        
+        if method == 'pca':
+            dataframe[['x', 'y', 'z']] = PCA(n_components=3).fit_transform(X)
+        elif method == 'truncated_svd':
+            dataframe[['x', 'y', 'z']] = TruncatedSVD(n_components=3).fit_transform(X)
+        elif method == 'dictionary_learning':
+            dataframe[['x', 'y', 'z']] = DictionaryLearning(n_components=3, transform_algorithm='lasso_lars').fit_transform(X)
+            
+        return dataframe
+
+    def _clustering_metrics(self, params):
+
+        file_name = params['gl']['file']
+        embedded_path = params['gl']['embedded_path']
+        concat_method = params['t_gen']['concat_method']
+        include_times = params['t_gen']['include_times']
+        
+        if params['t_gen']['emb_method'] == 'emb_dot_product':
+            emb_path = os.path.join(embedded_path, 'ac_DP_' + file_name.split('.')[0]+'.emb')
+        elif params['t_gen']['emb_method'] == 'emb_w2vec':
+            emb_path = os.path.join( embedded_path, 'ac_W2V_' + '{}_'.format(concat_method) + file_name.split('.')[0] + '.emb')
+        elif params['t_gen']['emb_method'] == 'emb_dot_product_times':
+            emb_path = os.path.join( embedded_path, 'ac_DP_times_' + file_name.split('.')[0] + '.emb')
+        elif params['t_gen']['emb_method'] == 'emb_dot_product_act_weighting' and include_times:
+            emb_path = os.path.join( embedded_path, 'ac_DP_act_weighting_times_' + file_name.split('.')[0] + '.emb')
+        elif params['t_gen']['emb_method'] == 'emb_dot_product_act_weighting' and not include_times:
+            emb_path = os.path.join( embedded_path, 'ac_DP_act_weighting_no_times_' + file_name.split('.')[0] + '.emb')
+
+        print(emb_path)
+        df_embeddings = pd.read_csv(emb_path, header=None)
+        n_cols = len(df_embeddings.columns)
+        df_embeddings.columns = ['id', 'task_name'] + ['id_{}'.format(idx) for idx in range(1, n_cols-1)]
+        df_embeddings['task_name'] = df_embeddings['task_name'].str.lstrip()
+        
+        """
+        clustering_ms = ['kmeans', 'gaussian_mixture']
+        decomposition_ms = ['pca', 'truncated_svd']
+        KS = [3, 5, 7]
+        """
+
+        clustering_ms = ['kmeans']
+        decomposition_ms = ['pca']
+        KS = [3]
+
+        metrics = []
+        for clustering_m in clustering_ms:
+            for decomposition_m in decomposition_ms:
+                for K in KS:
+                    df_embeddings_tmp = self.clustering_method(df_embeddings, clustering_m, K)
+                    df_embeddings_tmp = self.decomposition_method(df_embeddings_tmp, decomposition_m)
+                    s_score = silhouette_score(df_embeddings_tmp[['x', 'y', 'z']], df_embeddings_tmp['cluster'], metric='euclidean')
+                    ch_score = calinski_harabasz_score(df_embeddings_tmp[['x', 'y', 'z']], df_embeddings_tmp['cluster'])
+                    metrics.append([clustering_m, decomposition_m, K, s_score, ch_score])
+
+        metrics_df = pd.DataFrame(data= metrics, columns = ['clustering_method', 'decomposition_method', 'number_clusters', 'silhouette_score', 'calinski_harabasz_score'])
+        best = metrics_df.sort_values(by=['silhouette_score', 'calinski_harabasz_score'], ascending=True).head(1)
+
+        return best.T.reset_index()
+
     def _export_results(self, output_path) -> None:
+
+        clust_mets = self._clustering_metrics(self.parms)
+        clust_mets.columns = ['metric', 'sim_val']
+        clust_mets['run_num'] = 0.0
+        sim_values_df = pd.DataFrame(self.sim_values).sort_values(by='metric')
+        results_df = pd.concat([sim_values_df, clust_mets])
+
+        file_name = self.parms['gl']['file']
+        embedded_path = self.parms['gl']['embedded_path']
+        concat_method = self.parms['t_gen']['concat_method']
+
+        if self.parms['t_gen']['emb_method'] == 'emb_dot_product':
+            emb_path = 'ac_DP_' + file_name.split('.')[0]+'.emb'
+            embedd_method = 'Dot product'
+            input_method = 'No aplica'
+            include_times = 'No aplica'
+        elif self.parms['t_gen']['emb_method'] == 'emb_w2vec':
+            if self.parms['t_gen']['include_times']:
+                emb_path = 'ac_W2V_' + '{}_times_'.format(concat_method) + file_name.split('.')[0] +'.emb'
+                embedd_method = 'Word2vec'
+                input_method = self.parms['t_gen']['concat_method']
+                include_times = self.parms['t_gen']['include_times']
+            else:
+                emb_path = 'ac_W2V_' + '{}_no_times_'.format(concat_method) + file_name.split('.')[0] +'.emb'
+                embedd_method = 'Word2vec'
+                input_method = self.parms['t_gen']['concat_method']
+                include_times = self.parms['t_gen']['include_times']
+        elif self.parms['t_gen']['emb_method'] == 'emb_dot_product_times':
+            emb_path = 'ac_DP_times_' + file_name.split('.')[0] + '.emb'
+            embedd_method = 'Dot product'
+            input_method = 'Times'
+            include_times = True
+        elif self.parms['t_gen']['emb_method'] == 'emb_dot_product_act_weighting':
+            if self.parms['t_gen']['include_times']:
+                emb_path = 'ac_DP_act_weighting_times_' + file_name.split('.')[0] + '.emb'
+                embedd_method = 'Dot product'
+                input_method = 'Activity weighting'
+                include_times = self.parms['t_gen']['include_times']
+            else:
+                emb_path = 'ac_DP_act_weighting_no_times_' + file_name.split('.')[0] + '.emb'
+                embedd_method = 'Dot product'
+                input_method = 'Activity weighting'
+                include_times = self.parms['t_gen']['include_times']
+
         # Save results
-        pd.DataFrame(self.sim_values).to_csv(
+        results_df.to_csv(
             os.path.join(output_path, sup.file_id(prefix='SE_')),
             index=False)
+
+        results_df_T = results_df.set_index('metric').T.reset_index(drop=True)
+        results_df_T['input_method'] = input_method
+        results_df_T['embedding_method'] = embedd_method
+        results_df_T['log_name'] = self.parms['gl']['file']
+        results_df_T['times_included'] = include_times
+
+        results_df_T.to_csv(
+            os.path.join('output_files', emb_path.replace('.emb', '.csv')),
+            index=False)
+            
         # Save logs        
         log_test = self.log_test[~self.log_test.task.isin(['Start', 'End'])]
         log_test.to_csv(
@@ -250,9 +392,15 @@ class DeepSimulator():
         train = pd.DataFrame(train)
         self.log_test = (test.sort_values(key, ascending=True)
                          .reset_index(drop=True))
+
+        print('Number of instances in test log: {}'.format(len(self.log_test['caseid'].drop_duplicates())))
         self.log_train = copy.deepcopy(self.log)
+        
+        
         self.log_train.set_data(train.sort_values(key, ascending=True)
                                 .reset_index(drop=True).to_dict('records'))
+        print('Number of instances in train log: {}'.format(len(train.sort_values(key, ascending=True)
+                                .reset_index(drop=True)['caseid'].drop_duplicates())))
 
     @staticmethod
     def _get_traces(data, one_timestamp):
