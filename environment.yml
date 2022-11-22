@@ -14,7 +14,7 @@ dependencies:
     - scikit-learn==1.1.2
     - hyperopt==0.2.5
     - jellyfish
-    - tensorflow==2.4.0
+    - tensorflow
     - keras==2.4.3
     - opyenxes==0.3.0
     - graphviz==0.15
