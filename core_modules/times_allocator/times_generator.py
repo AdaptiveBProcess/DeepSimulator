@@ -84,10 +84,7 @@ class TimesGenerator():
         model_path = (self.model_path
                       if self.parms['model_type'] in ['basic', 'inter', 'inter_nt']
                       else (self.proc_model_path, self.wait_model_path))
-        predictor = tp.TimesPredictor(model_path,
-                                      self.parms,
-                                      sequences,
-                                      iarr)
+        predictor = tp.TimesPredictor(model_path, self.parms, sequences, iarr)
         return predictor.predict(self.parms['model_type'])
 
 

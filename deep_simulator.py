@@ -49,9 +49,7 @@ class DeepSimulator():
         # modify number of instances in the model
         num_inst = len(self.log_test.caseid.unique())
         # get minimum date
-        start_time = (self.log_test
-                      .start_timestamp
-                      .min().strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"))
+        start_time = (self.log_test.start_timestamp.min().strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"))
         print('############ Structure optimization ############')
         # Structure optimization
         seq_gen = sg.SeqGenerator({**self.parms['gl'],

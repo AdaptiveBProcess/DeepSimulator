@@ -27,7 +27,6 @@ import deep_simulator as ds
 @click.option('--s_gen_max_eval', default=30, required=False, type=int)
 @click.option('--t_gen_epochs', default=100, required=False, type=int)
 @click.option('--t_gen_max_eval', default=6, required=False, type=int)
-
 def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, save_models, evaluate, mining_alg,
          s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval):
     params = dict()
@@ -61,9 +60,9 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['i_gen']['gen_method'] = 'prophet'  # pdf, dl, mul_pdf, test, prophet
     # Times allocator parameters
     params['t_gen'] = dict()
-    params['t_gen']['emb_method'] = "emb_w2vec" # emb_dot_product, emb_dot_product_times, emb_dot_product_act_weighting, emb_w2vec
+    params['t_gen']['emb_method'] = "emb_dot_product" # emb_dot_product, emb_dot_product_times, emb_dot_product_act_weighting, emb_w2vec
     params['t_gen']['concat_method'] = 'weighting' # single_sentence, full_sentence, weighting //Solo aplica si se escoge w2vec como embedding method
-    params['t_gen']['include_times'] = True # True, False // Solo aplica si se escoge w2vec o dot product con weighting
+    params['t_gen']['include_times'] = True  # True, False // Solo aplica si se escoge w2vec o dot product con weighting
     params['t_gen']['imp'] = 1
     params['t_gen']['max_eval'] = t_gen_max_eval
     params['t_gen']['batch_size'] = 32  # Usually 32/64/128/256

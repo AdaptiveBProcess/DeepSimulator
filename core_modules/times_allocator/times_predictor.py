@@ -9,7 +9,7 @@ from core_modules.times_allocator import intercases_predictor as ip
 from core_modules.times_allocator import intercases_predictor_multimodel as mip
 
 
-class TimesPredictor():
+class TimesPredictor:
     """
     This class evaluates the inter-arrival times
     """
@@ -23,8 +23,7 @@ class TimesPredictor():
         
     def predict(self, method):
         predictor = self._get_predictor(method)
-        return predictor.predict(self.sequences, 
-                                 self.iarr)
+        return predictor.predict(self.sequences, self.iarr)
 
     def _get_predictor(self, method):
         if method == 'basic':
