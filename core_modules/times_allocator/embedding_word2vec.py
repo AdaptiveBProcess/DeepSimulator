@@ -65,7 +65,7 @@ class EmbeddingWord2vec():
 
             n_bins = int((np.max(self.log['duration']) - np.min(self.log['duration']))/(np.mean(self.log['duration'])))
             print('The number of intervals are: {}'.format(n_bins))
-            self.log['duration_cat'] = pd.qcut(self.log['duration'], n_bins, labels=False)
+            self.log['duration_cat'] = pd.qcut(self.log['duration'], n_bins, labels=False, duplicates = 'drop')
 
             dim_number = math.ceil(
                 len(list(itertools.product(*[list(self.ac_index.items()),
