@@ -132,7 +132,6 @@ class InstancesGenerator():
 
         """
         temp_process_graph = process_graph.copy()
-        print(temp_process_graph)
         for node in list(temp_process_graph.nodes):
             if process_graph.nodes[node]['type'] not in ['start', 'end', 'task']:
                 preds = list(temp_process_graph.predecessors(node))
