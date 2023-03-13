@@ -26,26 +26,27 @@ class EmbeddingUpdater():
     """
 
     def __init__(self, parms):
+        self.new_ac_weights = None
         self.modif_model_path = os.path.join(
-            parms['gl']['embedded_path'], 
-            parms['gl']['modified_file'].split('.')[0]+'_emb.h5')
+            parms['gl']['embedded_path'],
+            parms['gl']['modified_file'].split('.')[0] + '_emb.h5')
         self.modif_embedding_path = os.path.join(
             parms['gl']['embedded_path'],
-            'ac_'+parms['gl']['modified_file'].split('.')[0]+'.emb')
+            'ac_' + parms['gl']['modified_file'].split('.')[0] + '.emb')
         self.modif_gen_metadata_path = os.path.join(
-            parms['gl']['times_gen_path'], 
-            parms['gl']['modified_file'].split('.')[0]+'_diapr_meta.json')
+            parms['gl']['times_gen_path'],
+            parms['gl']['modified_file'].split('.')[0] + '_diapr_meta.json')
         self.complete_gen_metadata_path = os.path.join(
-            parms['gl']['times_gen_path'], 
-            parms['gl']['complete_file'].split('.')[0]+'_diapr_meta.json')
+            parms['gl']['times_gen_path'],
+            parms['gl']['complete_file'].split('.')[0] + '_diapr_meta.json')
         self.modif_params = dict()
-        
+
         self.output_file_path = os.path.join(
             parms['gl']['embedded_path'],
-            'ac_' + parms['gl']['modified_file'].split('.')[0]+'_upd.emb')
+            'ac_' + parms['gl']['modified_file'].split('.')[0] + '_upd.emb')
         self.output_model_path = os.path.join(
             parms['gl']['embedded_path'],
-            parms['gl']['modified_file'].split('.')[0]+'_upd_emb.h5')
+            parms['gl']['modified_file'].split('.')[0] + '_upd_emb.h5')
 
     def execute_pipeline(self):
         model, ac_weights, org_parms = self._read_original_model()
@@ -54,18 +55,15 @@ class EmbeddingUpdater():
         # extend embedding
         new_ac_weights = np.append(
             ac_weights,
-            np.random.rand(len(self.modif_params['m_tasks']), 
+            np.random.rand(len(self.modif_params['m_tasks']),
                            ac_weights.shape[1]), axis=0)
         # Create new model
         output_shape = model.get_layer('activity_embedding').output_shape
         users_input_dim = model.get_layer('user_embedding').input_dim
         num_emb_dimmensions = output_shape[2]
-        new_model = self.create_embedding_model(new_ac_weights.shape[0], 
-                                                users_input_dim, 
-                                                num_emb_dimmensions)
+        new_model = self.create_embedding_model(new_ac_weights.shape[0], users_input_dim, num_emb_dimmensions)
         # Save weights of old model
-        temp_weights = {layer.name: layer.get_weights() 
-                        for layer in model.layers}
+        temp_weights = {layer.name: layer.get_weights() for layer in model.layers}
         # load values in new model
         for k, v in temp_weights.items():
             if k == 'activity_embedding':
@@ -73,15 +71,12 @@ class EmbeddingUpdater():
             elif v:
                 new_model.get_layer(k).set_weights(v)
         # Re-train embedded model and update dimmensions
-        self.new_ac_weights = self.re_train_embedded(new_model,
-                                                     num_emb_dimmensions)
+        self.new_ac_weights = self.re_train_embedded(new_model, num_emb_dimmensions)
         # Save results
         matrix = self.reformat_matrix(
             {v: k for k, v in org_parms['ac_index'].items()}, new_ac_weights)
         sup.create_file_from_list(matrix, self.output_file_path)
-        
-        
-    
+
     def _read_original_model(self):
         # Load old model
         model = load_model(self.modif_model_path)
@@ -92,7 +87,6 @@ class EmbeddingUpdater():
         with open(self.modif_gen_metadata_path) as file:
             parameters = json.load(file)
         return model, ac_weights, parameters
-
 
     def define_modif_parms(self, org_parms):
         with open(self.complete_gen_metadata_path) as file:
@@ -110,70 +104,68 @@ class EmbeddingUpdater():
         self.modif_params['roles'] = exp_parms['roles']
         self.modif_params['len_log'] = org_parms['log_size']
         # extend indexes
-        for task in m_tasks: 
+        for task in m_tasks:
             self.modif_params['ac_index'][task] = len(
                 self.modif_params['ac_index'])
-        
-        
+
     def create_embedding_model(self, num_cat, num_users, embedding_size):
         """Model to embed activities and users using the functional API"""
-    
+
         # Both inputs are 1-dimensional
         activity = Input(name='activity', shape=[1])
         user = Input(name='user', shape=[1])
-    
+
         # Embedding the activity (shape will be (None, 1, embedding_size))
         activity_embedding = Embedding(name='activity_embedding',
                                        input_dim=num_cat,
                                        output_dim=embedding_size)(activity)
-    
+
         # Embedding the user (shape will be (None, 1, embedding_size))
         user_embedding = Embedding(name='user_embedding',
                                    input_dim=num_users,
                                    output_dim=embedding_size)(user)
-    
+
         # Merge the layers with a dot product
         # along the second axis (shape will be (None, 1, 1))
         merged = Dot(name='dot_product',
                      normalize=True, axes=2)([activity_embedding, user_embedding])
-    
+
         # Reshape to be a single number (shape will be (None, 1))
         merged = Reshape(target_shape=[1])(merged)
-    
+
         # Loss function is mean squared error
         model = Model(inputs=[activity, user], outputs=merged)
         model.compile(optimizer='Adam', loss='mse')
-    
+
         return model
 
     def re_train_embedded(self, model, dim_number):
         """Carry out the training of the embeddings"""
         # Iterate through each book
         vec, cl = self.vectorize_input(self.modif_params, negative_ratio=2)
-        
+
         # Output file
         output_file_path = os.path.join(self.output_model_path)
         # Saving
         model_checkpoint = ModelCheckpoint(output_file_path,
-                                            monitor='val_loss',
-                                            verbose=0,
-                                            save_best_only=True,
-                                            save_weights_only=False,
-                                            mode='auto')
+                                           monitor='val_loss',
+                                           verbose=0,
+                                           save_best_only=True,
+                                           save_weights_only=False,
+                                           mode='auto')
         # Train
         model.fit(x=vec, y=cl,
                   validation_split=0.2,
                   callbacks=[model_checkpoint],
                   epochs=100,
                   verbose=2)
-    
+
         # Extract embeddings
         return model.get_layer('activity_embedding').get_weights()[0]
-    
+
     @staticmethod
     def vectorize_input(modif_params, negative_ratio=1.0):
         """Generate batches of samples for training"""
-        pairs = list()
         roles = (pd.DataFrame.from_dict(modif_params['roles'], orient='index')
                  .unstack()
                  .reset_index()
@@ -183,10 +175,9 @@ class EmbeddingUpdater():
         # Task assignments
         m_tasks_assignment = pd.DataFrame(modif_params['m_tasks_assignment'])
         roles = roles.merge(m_tasks_assignment, on='role', how='left')
-        pairs = roles[['task','user']][~roles.task.isna()].to_records(index=False)
-        pairs = [
-            (modif_params['ac_index'][x[0]], modif_params['usr_index'][x[1]]) for x in pairs]
-            
+        pairs = roles[['task', 'user']][~roles.task.isna()].to_records(index=False)
+        pairs = [(modif_params['ac_index'][x[0]], modif_params['usr_index'][x[1]]) for x in pairs]
+
         n_positive = math.ceil(modif_params['len_log'] * 0.15)
         batch_size = n_positive * (1 + negative_ratio)
         batch = np.zeros((batch_size, 3))
@@ -201,16 +192,15 @@ class EmbeddingUpdater():
             batch[idx, :] = (activity, user, 1)
         # Increment idx by 1
         idx += 1
-    
+
         # Add negative examples until reach batch size
         while idx < batch_size:
             # random selection
             random_ac = modif_params['ac_index'][random.sample(activities, 1)[0]]
-            random_rl = random.randrange(len(users)-1)
-    
+            random_rl = random.randrange(len(users) - 1)
+
             # Check to make sure this is not a positive example
             if (random_ac, random_rl) not in pairs_set:
-    
                 # Add to batch and increment index,  0 due classification task
                 batch[idx, :] = (random_ac, random_rl, 0)
                 idx += 1
@@ -218,9 +208,9 @@ class EmbeddingUpdater():
         np.random.shuffle(batch)
         return {'activity': batch[:, 0], 'user': batch[:, 1]}, batch[:, 2]
 
-# =============================================================================
-#   Support modules
-# =============================================================================
+    # =============================================================================
+    #   Support modules
+    # =============================================================================
     @staticmethod
     def read_embedded(filename):
         """Loading of the embedded matrices.

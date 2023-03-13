@@ -18,11 +18,14 @@ import pandas as pd
 import readers.log_splitter as ls
 from extraction import log_replayer as rpl
 from extraction import role_discovery as rl
+from core_modules.times_allocator import embedder as emb
 from core_modules.times_allocator import embedding_trainer as em
 from core_modules.times_allocator import times_model_optimizer as to
 from core_modules.times_allocator import model_hpc_optimizer as hpc_op
 from core_modules.times_allocator import intercase_features_calculator as it
 from core_modules.times_allocator import times_predictor as tp
+import seaborn as sns
+from fitter import Fitter, get_common_distributions, get_distributions
 
 from sklearn.preprocessing import MaxAbsScaler
 from pickle import dump
@@ -81,10 +84,7 @@ class TimesGenerator():
         model_path = (self.model_path
                       if self.parms['model_type'] in ['basic', 'inter', 'inter_nt']
                       else (self.proc_model_path, self.wait_model_path))
-        predictor = tp.TimesPredictor(model_path,
-                                      self.parms,
-                                      sequences,
-                                      iarr)
+        predictor = tp.TimesPredictor(model_path, self.parms, sequences, iarr)
         return predictor.predict(self.parms['model_type'])
 
 
@@ -184,6 +184,37 @@ class TimesGenerator():
 # =============================================================================
 # Train model
 # =============================================================================
+    def extract_distribution(self, X):
+        f = Fitter(X,
+            distributions=['norm', 'expon', 'uniform', 'lognorm', 'loguniform'])
+        f.fit()
+        f.summary()
+        return list(f.get_best(method = 'sumsquare_error').keys())[0]
+
+    def extract_day_moment(self, start_timestamp):
+        if start_timestamp.hour >= 0 and start_timestamp.hour < 12:
+            return 'morning'
+        elif start_timestamp.hour >= 12 and start_timestamp.hour < 17:
+            return 'afternoon'
+        elif start_timestamp.hour >= 17 and start_timestamp.hour < 24:
+            return 'night'
+    
+    
+    def extract_description_activities(self, log):
+        log['order'] = log.sort_values(by='start_timestamp', ascending=True).groupby('caseid').cumcount() + 1
+        activity_desc = []
+        for activity in log['task'].drop_duplicates():
+            log_activity = log[log['task'] == activity]
+            day_moment = list(set([self.extract_day_moment(x) for x in log_activity['start_timestamp']]))
+            rol = list(set([x for x in log_activity['user']]))
+            trace_position = np.mean(list(set([x for x in log_activity['order']])))
+            distribution = self.extract_distribution([x for x in log_activity['processing_time']])
+            mean_proc_time = np.mean(log_activity['processing_time'])
+            std_proc_time = np.std(log_activity['processing_time'])
+            activity_desc.append([activity, day_moment, rol, trace_position, distribution, mean_proc_time, std_proc_time])
+
+        df_activity_desc = pd.DataFrame(data=activity_desc, columns = ['task_name', 'day_moment', 'rol', 'trace_position', 'dstribution', 'mean_processing_time', 'std_processing_time'])
+        df_activity_desc.to_csv('output_files/Activity_description.csv', sep='|')
 
     def _discover_model(self, **kwargs):
         # indexes creation
@@ -206,13 +237,19 @@ class TimesGenerator():
             self.log_train['n_ac_index'] = self.log_train.apply(ac_idx, axis=1)
             self.log_valdn['n_ac_index'] = self.log_valdn.apply(ac_idx, axis=1)
         # Load embedding matrixes
-        emb_trainer = em.EmbeddingTrainer(self.parms,
-                                          pd.DataFrame(self.log),
-                                          self.ac_index, 
-                                          self.index_ac,
-                                          self.usr_index, 
-                                          self.index_usr)
-        self.ac_weights = emb_trainer.load_embbedings()
+        self.train_val_log = pd.concat([pd.DataFrame(self.log_train), pd.DataFrame(self.log_valdn)])
+        self.ac_index_train_val, self.index_ac_train_val = self._indexing(self.train_val_log, 'task')
+        self.usr_index_train_val, self.index_usr_train_val = self._indexing(self.train_val_log, 'user')
+
+        emb_trainer = emb.Embedder(self.parms,
+                                    self.log,
+                                    self.ac_index,
+                                    self.index_ac,
+                                    self.usr_index,
+                                    self.index_usr)
+                                    
+        self.ac_weights = emb_trainer.Embedd(self.parms['emb_method'])
+        self.extract_description_activities(self.log.copy())
         # Scale features
         self._transform_features()
         # Optimizer
@@ -236,6 +273,8 @@ class TimesGenerator():
 # =============================================================================
 # Support modules
 # =============================================================================
+    
+    
     def _replay_process(self) -> None:
         """
         Process replaying

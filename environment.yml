@@ -9,13 +9,16 @@ dependencies:
     - pandas
     - nltk==3.7
     - networkx==2.5
-    - numpy==1.19.2
+    - numpy
     - sympy==1.7.1
     - scikit-learn==1.1.2
     - hyperopt==0.2.5
     - jellyfish
-    - tensorflow==2.4.0
+    - tensorflow
     - keras==2.4.3
     - opyenxes==0.3.0
     - graphviz==0.15
     - git+http://github.com/Mcamargo85/support_modules.git
+    - gensim
+    - seaborn
+    - fitter

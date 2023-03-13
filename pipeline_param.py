@@ -27,8 +27,12 @@ import deep_simulator as ds
 @click.option('--s_gen_max_eval', default=30, required=False, type=int)
 @click.option('--t_gen_epochs', default=100, required=False, type=int)
 @click.option('--t_gen_max_eval', default=6, required=False, type=int)
+@click.option('--emb_method', default="emb_dot_product", required=False, type=str)
+@click.option('--concat_method', default="single_sentence", required=False, type=str)
+@click.option('--include_times', default=False, required=False, type=bool)
+
 def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, save_models, evaluate, mining_alg,
-         s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval):
+         s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval, emb_method, concat_method, include_times):
     params = dict()
     params['gl'] = dict()
     params['gl']['file'] = file
@@ -60,9 +64,9 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['i_gen']['gen_method'] = 'prophet'  # pdf, dl, mul_pdf, test, prophet
     # Times allocator parameters
     params['t_gen'] = dict()
-    params['t_gen']['emb_method'] = "emb_dot_product" # emb_dot_product, emb_dot_product_times, emb_dot_product_act_weighting, emb_w2vec
-    params['t_gen']['concat_method'] = 'weighting' # single_sentence, full_sentence, weighting //Solo aplica si se escoge w2vec como embedding method
-    params['t_gen']['include_times'] = True  # True, False // Solo aplica si se escoge w2vec o dot product con weighting
+    params['t_gen']['emb_method'] = emb_method # emb_dot_product, emb_dot_product_times, emb_dot_product_act_weighting, emb_w2vec
+    params['t_gen']['concat_method'] = concat_method # single_sentence, full_sentence, weighting //Solo aplica si se escoge w2vec como embedding method
+    params['t_gen']['include_times'] = include_times # True, False // Solo aplica si se escoge w2vec o dot product con weighting
     params['t_gen']['imp'] = 1
     params['t_gen']['max_eval'] = t_gen_max_eval
     params['t_gen']['batch_size'] = 32  # Usually 32/64/128/256
@@ -77,8 +81,7 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['t_gen']['all_r_pool'] = True  # only intercase features
     params['t_gen']['reschedule'] = False  # reschedule according resource pool ocupation
     params['t_gen']['rp_similarity'] = 0.80  # Train models
-    print(params['gl']['file'])
-    print(params)
+
     simulator = ds.DeepSimulator(params)
     simulator.execute_pipeline()
 
