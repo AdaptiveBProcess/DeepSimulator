@@ -195,7 +195,7 @@ class EmbeddingTrainer():
 
     def _read_embedded(self, index, filename):
         """Loading of the embedded matrices.
-        parms:
+        params:
             index (dict): index of activities or roles.
             filename (str): filename of the matrix file.
         Returns:

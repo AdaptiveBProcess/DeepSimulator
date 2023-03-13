@@ -130,7 +130,7 @@ class LogDisturber():
     @staticmethod
     def _add_calculated_times(log):
         """Appends the indexes and relative time to the dataframe.
-        parms:
+        params:
             log: dataframe.
         Returns:
             Dataframe: The dataframe with the calculated features added.
@@ -179,12 +179,12 @@ def main(argv):
     """Main aplication method"""
     parms = dict()
     parms = define_general_parms(parms)
-    # parms setting manual fixed or catched by console
+    # params setting manual fixed or catched by console
     if not argv:
-        # Event-log parms
+        # Event-log params
         parms['gl']['file'] = 'BPI_Challenge_2017_W_Two_TS.xes'
     else:
-        # Catch parms by console
+        # Catch params by console
         try:
             opts, _ = getopt.getopt(argv, "h:f:", ['file='])
             for opt, arg in opts:
@@ -201,7 +201,7 @@ def main(argv):
 
 
 def define_general_parms(parms):
-    """ Sets the app general parms"""
+    """ Sets the app general params"""
     column_names = {'Case ID': 'caseid',
                     'Activity': 'task',
                     'lifecycle:transition': 'event_type',

@@ -131,9 +131,9 @@ class DeepLearningGenerator():
     def _vectorize(self, log, cols, ngram_size):
         """
         Dataframe vectorizer.
-        parms:
+        params:
             columns: list of features to vectorize.
-            parms (dict): parms for training the network
+            params (dict): params for training the network
         Returns:
             dict: Dictionary that contains all the LSTM inputs.
         """

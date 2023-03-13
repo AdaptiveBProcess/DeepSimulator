@@ -340,7 +340,7 @@ class TimesGenerator():
 
     def _add_intercases(self):
         """Appends the indexes and relative time to the dataframe.
-        parms:
+        params:
             log: dataframe.
         Returns:
             Dataframe: The dataframe with the calculated features added.
@@ -370,7 +370,7 @@ class TimesGenerator():
 
     def _add_calculated_times(self, log):
         """Appends the indexes and relative time to the dataframe.
-        parms:
+        params:
             log: dataframe.
         Returns:
             Dataframe: The dataframe with the calculated features added.

@@ -2,34 +2,31 @@
 """
 @author: Manuel Camargo
 """
-import os
 import copy
+import os
 import shutil
-
-
-import pandas as pd
-import numpy as np
+import warnings
 from operator import itemgetter
 
-import utils.support as sup
-from utils.support import timeit, safe_exec
-import readers.log_reader as lr
-import readers.bpmn_reader as br
-import readers.process_structure as gph
-import readers.log_splitter as ls
 import analyzers.sim_evaluator as sim
+import pandas as pd
+import readers.bpmn_reader as br
+import readers.log_reader as lr
+import readers.process_structure as gph
+import utils.support as sup
+from sklearn.cluster import KMeans, MeanShift
+from sklearn.decomposition import PCA, TruncatedSVD, DictionaryLearning
+from sklearn.metrics import silhouette_score, calinski_harabasz_score
+from sklearn.mixture import GaussianMixture
+from utils.support import timeit, safe_exec
 
+import support_modules.common as cm
 from core_modules.instances_generator import instances_generator as gen
 from core_modules.sequences_generator import seq_generator as sg
 from core_modules.times_allocator import times_generator as ta
 
-from sklearn.decomposition import PCA, TruncatedSVD, DictionaryLearning
-from sklearn.cluster import KMeans, AffinityPropagation, MeanShift, estimate_bandwidth
-from sklearn.mixture import GaussianMixture
-from sklearn.metrics import silhouette_score, calinski_harabasz_score
-
-import warnings
 warnings.filterwarnings("ignore")
+
 
 class DeepSimulator():
     """
@@ -44,8 +41,7 @@ class DeepSimulator():
 
     def execute_pipeline(self) -> None:
         exec_times = dict()
-        self.is_safe = self._read_inputs(
-            log_time=exec_times, is_safe=self.is_safe)
+        self.is_safe = self._read_inputs(log_time=exec_times, is_safe=self.is_safe)
         # modify number of instances in the model
         num_inst = len(self.log_test.caseid.unique())
         # get minimum date
@@ -56,8 +52,7 @@ class DeepSimulator():
                                    **self.parms['s_gen']},
                                   self.log_train)
         print('############ Generate interarrivals ############')
-        self.is_safe = self._read_bpmn(
-            log_time=exec_times, is_safe=self.is_safe)
+        self.is_safe = self._read_bpmn(log_time=exec_times, is_safe=self.is_safe)
         generator = gen.InstancesGenerator(self.process_graph,
                                            self.log_train,
                                            self.parms['i_gen']['gen_method'],
@@ -145,33 +140,35 @@ class DeepSimulator():
             index=False)
 
     def clustering_method(self, dataframe, method, K=3):
-    
+
         cols = [x for x in dataframe.columns if 'id_' in x]
         X = dataframe[cols]
 
         if method == 'kmeans':
-            kmeans = KMeans(n_clusters = K, random_state=30).fit(X)
+            kmeans = KMeans(n_clusters=K, random_state=30).fit(X)
             dataframe['cluster'] = kmeans.labels_
         elif method == 'mean_shift':
             ms = MeanShift(bandwidth=K, bin_seeding=True, random_state=30).fit(X)
             dataframe['cluster'] = ms.labels_
         elif method == 'gaussian_mixture':
-            dataframe['cluster'] = GaussianMixture(n_components=K, covariance_type='spherical', random_state=30).fit_predict(X)
-            
+            dataframe['cluster'] = GaussianMixture(n_components=K, covariance_type='spherical',
+                                                   random_state=30).fit_predict(X)
+
         return dataframe
 
     def decomposition_method(self, dataframe, method):
-    
+
         cols = [x for x in dataframe.columns if 'id_' in x]
         X = dataframe[cols]
-        
+
         if method == 'pca':
             dataframe[['x', 'y', 'z']] = PCA(n_components=3).fit_transform(X)
         elif method == 'truncated_svd':
             dataframe[['x', 'y', 'z']] = TruncatedSVD(n_components=3).fit_transform(X)
         elif method == 'dictionary_learning':
-            dataframe[['x', 'y', 'z']] = DictionaryLearning(n_components=3, transform_algorithm='lasso_lars').fit_transform(X)
-            
+            dataframe[['x', 'y', 'z']] = DictionaryLearning(n_components=3,
+                                                            transform_algorithm='lasso_lars').fit_transform(X)
+
         return dataframe
 
     def _clustering_metrics(self, params):
@@ -180,24 +177,25 @@ class DeepSimulator():
         embedded_path = params['gl']['embedded_path']
         concat_method = params['t_gen']['concat_method']
         include_times = params['t_gen']['include_times']
-        
+
         if params['t_gen']['emb_method'] == 'emb_dot_product':
-            emb_path = os.path.join(embedded_path, 'ac_DP_' + file_name.split('.')[0]+'.emb')
+            emb_path = os.path.join(embedded_path, 'ac_DP_' + file_name.split('.')[0] + '.emb')
         elif params['t_gen']['emb_method'] == 'emb_w2vec':
-            emb_path = os.path.join( embedded_path, 'ac_W2V_' + '{}_'.format(concat_method) + file_name.split('.')[0] + '.emb')
+            emb_path = os.path.join(embedded_path,
+                                    'ac_W2V_' + '{}_'.format(concat_method) + file_name.split('.')[0] + '.emb')
         elif params['t_gen']['emb_method'] == 'emb_dot_product_times':
-            emb_path = os.path.join( embedded_path, 'ac_DP_times_' + file_name.split('.')[0] + '.emb')
+            emb_path = os.path.join(embedded_path, 'ac_DP_times_' + file_name.split('.')[0] + '.emb')
         elif params['t_gen']['emb_method'] == 'emb_dot_product_act_weighting' and include_times:
-            emb_path = os.path.join( embedded_path, 'ac_DP_act_weighting_times_' + file_name.split('.')[0] + '.emb')
+            emb_path = os.path.join(embedded_path, 'ac_DP_act_weighting_times_' + file_name.split('.')[0] + '.emb')
         elif params['t_gen']['emb_method'] == 'emb_dot_product_act_weighting' and not include_times:
-            emb_path = os.path.join( embedded_path, 'ac_DP_act_weighting_no_times_' + file_name.split('.')[0] + '.emb')
+            emb_path = os.path.join(embedded_path, 'ac_DP_act_weighting_no_times_' + file_name.split('.')[0] + '.emb')
 
         print(emb_path)
         df_embeddings = pd.read_csv(emb_path, header=None)
         n_cols = len(df_embeddings.columns)
-        df_embeddings.columns = ['id', 'task_name'] + ['id_{}'.format(idx) for idx in range(1, n_cols-1)]
+        df_embeddings.columns = ['id', 'task_name'] + ['id_{}'.format(idx) for idx in range(1, n_cols - 1)]
         df_embeddings['task_name'] = df_embeddings['task_name'].str.lstrip()
-        
+
         """
         clustering_ms = ['kmeans', 'gaussian_mixture']
         decomposition_ms = ['pca', 'truncated_svd']
@@ -214,11 +212,13 @@ class DeepSimulator():
                 for K in KS:
                     df_embeddings_tmp = self.clustering_method(df_embeddings, clustering_m, K)
                     df_embeddings_tmp = self.decomposition_method(df_embeddings_tmp, decomposition_m)
-                    s_score = silhouette_score(df_embeddings_tmp[['x', 'y', 'z']], df_embeddings_tmp['cluster'], metric='euclidean')
+                    s_score = silhouette_score(df_embeddings_tmp[['x', 'y', 'z']], df_embeddings_tmp['cluster'],
+                                               metric='euclidean')
                     ch_score = calinski_harabasz_score(df_embeddings_tmp[['x', 'y', 'z']], df_embeddings_tmp['cluster'])
                     metrics.append([clustering_m, decomposition_m, K, s_score, ch_score])
 
-        metrics_df = pd.DataFrame(data= metrics, columns = ['clustering_method', 'decomposition_method', 'number_clusters', 'silhouette_score', 'calinski_harabasz_score'])
+        metrics_df = pd.DataFrame(data=metrics, columns=['clustering_method', 'decomposition_method', 'number_clusters',
+                                                         'silhouette_score', 'calinski_harabasz_score'])
         best = metrics_df.sort_values(by=['silhouette_score', 'calinski_harabasz_score'], ascending=True).head(1)
 
         return best.T.reset_index()
@@ -236,18 +236,18 @@ class DeepSimulator():
         concat_method = self.parms['t_gen']['concat_method']
 
         if self.parms['t_gen']['emb_method'] == 'emb_dot_product':
-            emb_path = 'ac_DP_' + file_name.split('.')[0]+'.emb'
+            emb_path = 'ac_DP_' + file_name.split('.')[0] + '.emb'
             embedd_method = 'Dot product'
             input_method = 'No aplica'
             include_times = 'No aplica'
         elif self.parms['t_gen']['emb_method'] == 'emb_w2vec':
             if self.parms['t_gen']['include_times']:
-                emb_path = 'ac_W2V_' + '{}_times_'.format(concat_method) + file_name.split('.')[0] +'.emb'
+                emb_path = 'ac_W2V_' + '{}_times_'.format(concat_method) + file_name.split('.')[0] + '.emb'
                 embedd_method = 'Word2vec'
                 input_method = self.parms['t_gen']['concat_method']
                 include_times = self.parms['t_gen']['include_times']
             else:
-                emb_path = 'ac_W2V_' + '{}_no_times_'.format(concat_method) + file_name.split('.')[0] +'.emb'
+                emb_path = 'ac_W2V_' + '{}_no_times_'.format(concat_method) + file_name.split('.')[0] + '.emb'
                 embedd_method = 'Word2vec'
                 input_method = self.parms['t_gen']['concat_method']
                 include_times = self.parms['t_gen']['include_times']
@@ -282,7 +282,7 @@ class DeepSimulator():
         results_df_T.to_csv(
             os.path.join('output_files', emb_path.replace('.emb', '.csv')),
             index=False)
-            
+
         # Save logs        
         log_test = self.log_test[~self.log_test.task.isin(['Start', 'End'])]
         log_test.to_csv(
@@ -290,8 +290,7 @@ class DeepSimulator():
                          self.parms['gl']['file'].split('.')[0] + '.csv'),
             index=False)
         if self.parms['gl']['save_models']:
-            paths = ['bpmn_models', 'embedded_path', 'ia_gen_path',
-                     'seq_flow_gen_path', 'times_gen_path']
+            paths = ['bpmn_models', 'embedded_path', 'ia_gen_path', 'seq_flow_gen_path', 'times_gen_path']
             sources = list()
             for path in paths:
                 for root, dirs, files in os.walk(self.parms['gl'][path]):
@@ -378,28 +377,15 @@ class DeepSimulator():
         size : float, validation percentage.
         one_ts : bool, Support only one timestamp.
         """
-        # Split log data
-        splitter = ls.LogSplitter(self.log.data)
-        train, test = splitter.split_log('timeline_contained', size, one_ts)
-        total_events = len(self.log.data)
-        # Check size and change time splitting method if necesary
-        if len(test) < int(total_events * 0.1):
-            train, test = splitter.split_log('timeline_trace', size, one_ts)
-        # Set splits
         key = 'end_timestamp' if one_ts else 'start_timestamp'
-        test = pd.DataFrame(test)
-        train = pd.DataFrame(train)
-        self.log_test = (test.sort_values(key, ascending=True)
-                         .reset_index(drop=True))
-
+        # Split log data
+        train, test = cm.split_log(self.log, one_ts, size)
+        self.log_test = (test.sort_values(key, ascending=True).reset_index(drop=True))
         print('Number of instances in test log: {}'.format(len(self.log_test['caseid'].drop_duplicates())))
         self.log_train = copy.deepcopy(self.log)
-        
-        
-        self.log_train.set_data(train.sort_values(key, ascending=True)
-                                .reset_index(drop=True).to_dict('records'))
+        self.log_train.set_data(train.sort_values(key, ascending=True).reset_index(drop=True).to_dict('records'))
         print('Number of instances in train log: {}'.format(len(train.sort_values(key, ascending=True)
-                                .reset_index(drop=True)['caseid'].drop_duplicates())))
+                                                                .reset_index(drop=True)['caseid'].drop_duplicates())))
 
     @staticmethod
     def _get_traces(data, one_timestamp):

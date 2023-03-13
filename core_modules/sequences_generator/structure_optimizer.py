@@ -378,7 +378,7 @@ class StructureOptimizer():
         data = {'alg_manag': settings['alg_manag'],
                 'gate_management': settings['gate_management'],
                 'output': settings['output']}
-        # Miner parms
+        # Miner params
         if settings['mining_alg'] in ['sm1', 'sm3']:
             data['epsilon'] = settings['epsilon']
             data['eta'] = settings['eta']

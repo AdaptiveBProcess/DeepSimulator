@@ -114,7 +114,7 @@ def _training_model(ac_weights, train_vec, valdn_vec, parms):
 
     early_stopping = EarlyStopping(monitor='val_loss', patience=50)
     cb = tc.TimingCallback(parms['output'])
-    # clean_models = cm.CleanSavedModelsCallback(parms['output'], 2)
+    # clean_models = cm.CleanSavedModelsCallback(params['output'], 2)
 
     # Output file
     output_file_path = os.path.join(parms['output'], 
