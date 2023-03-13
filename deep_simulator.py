@@ -28,7 +28,7 @@ from core_modules.times_allocator import times_generator as ta
 warnings.filterwarnings("ignore")
 
 
-class DeepSimulator():
+class DeepSimulator:
     """
     Main class of the Simulator
     """
@@ -85,7 +85,7 @@ class DeepSimulator():
 
     @timeit
     @safe_exec
-    def _read_inputs(self, **kwargs) -> None:
+    def _read_inputs(self, **_kwargs) -> None:
         # Event log reading
         self.log = lr.LogReader(os.path.join(self.parms['gl']['event_logs_path'],
                                              self.parms['gl']['file']),

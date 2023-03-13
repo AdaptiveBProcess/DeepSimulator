@@ -136,7 +136,7 @@ class InstancesGenerator:
     def _split_timeline(log, size: float, one_ts: bool) -> (pd.DataFrame, pd.DataFrame):
         """
         Split an event log dataframe by time to peform split-validation.
-        prefered method time splitting removing incomplete traces.
+        preferred method time splitting removing incomplete traces.
         If the testing set is smaller than the 10% of the log size
         the second method is sort by traces start and split taking the whole
         traces no matter if they are contained in the timeframe or not

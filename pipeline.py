@@ -80,7 +80,7 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['t_gen']['optim'] = ['Nadam']
     params['t_gen']['model_type'] = 'dual_inter'  # basic, inter, dual_inter, inter_nt
     params['t_gen']['opt_method'] = 'bayesian'  # bayesian, rand_hpc
-    params['t_gen']['all_r_pool'] = True  # only intercase features
+    params['t_gen']['all_r_pool'] = True  # only inter-case features
     params['t_gen']['reschedule'] = False  # reschedule according resource pool ocupation
     params['t_gen']['rp_similarity'] = 0.80  # Train models
 
