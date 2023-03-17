@@ -9,7 +9,7 @@ read_options:
   filter_d_attrib: true
 event_logs_path: input_files\event_logs
 bpmn_models: input_files\bpmn_models
-embedded_path: input_files\embedded_matix
+embedded_path: input_files\embedded_matrix
 ia_gen_path: input_files\ia_gen_models
 seq_flow_gen_path: input_files\seq_flow_gen_models
 times_gen_path: input_files\times_gen_models

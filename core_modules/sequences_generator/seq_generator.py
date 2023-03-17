@@ -105,7 +105,7 @@ class SeqGenerator():
                                           temp_path, self.model)
         # order by caseid and add position in the trace
         sim_log = pd.read_csv(sim_log)
-        sim_log = self._sort_log(sim_log)
+        sim_log = self.sort_log(sim_log)
         sim_log.drop(columns=['start_timestamp', 'end_timestamp'], inplace=True)
         sim_log['caseid'] = sim_log['caseid'] + 1
         sim_log['caseid'] = sim_log['caseid'].astype('string')
@@ -152,7 +152,7 @@ class SeqGenerator():
         return sim_log
 
     @staticmethod
-    def _sort_log(log):
+    def sort_log(log):
         log = sorted(log.to_dict('records'), key=lambda x: x['caseid'])
         for key, group in itertools.groupby(log, key=lambda x: x['caseid']):
             events = list(group)

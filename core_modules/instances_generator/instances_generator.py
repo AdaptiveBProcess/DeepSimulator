@@ -10,6 +10,7 @@ import itertools
 import pandas as pd
 
 import support_modules.common as cm
+from support_modules.common import InterArrivalGenerativeMethods as IaG
 from core_modules.instances_generator import dl_generators as dl
 from core_modules.instances_generator import multi_pdf_generators as mpdf
 from core_modules.instances_generator import pdf_generators as pdf
@@ -39,15 +40,15 @@ class InstancesGenerator:
         return self.generator.generate(num_instances, start_time)
 
     def _get_generator(self, method):
-        if method == 'pdf':
+        if method == IaG.PDF:
             self.generator = pdf.PDFGenerator(self.ia_times, self.ia_validation)
-        elif method == 'dl':
+        elif method == IaG.DL:
             self.generator = dl.DeepLearningGenerator(self.ia_times, self.ia_validation, self.params)
-        elif method == 'mul_pdf':
+        elif method == IaG.MULTI_PDF:
             self.generator = mpdf.MultiPDFGenerator(self.ia_times, self.ia_validation, self.params)
-        elif method == 'prophet':
+        elif method == IaG.PROPHET:
             self.generator = prf.ProphetGenerator(self.log, self.log_validation, self.params)
-        elif method == 'test':
+        elif method == IaG.TEST:
             self.generator = self.OriginalInterarrival()
         else:
             raise ValueError('Unexistent generator')
