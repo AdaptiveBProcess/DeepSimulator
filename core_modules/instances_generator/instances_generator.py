@@ -56,9 +56,10 @@ class InstancesGenerator:
     class OriginalInterarrival:
 
         @staticmethod
-        def generate(log, start_time):
+        def generate(log, _start_time):
             i_arr = log.groupby('caseid').start_timestamp.min().reset_index()
             i_arr.rename(columns={'start_timestamp': 'timestamp'}, inplace=True)
+            i_arr['timestamp'] = pd.to_datetime(i_arr['timestamp'])
             i_arr.drop(columns='caseid', inplace=True)
             i_arr.sort_values('timestamp', inplace=True)
             i_arr['caseid'] = i_arr.index + 1

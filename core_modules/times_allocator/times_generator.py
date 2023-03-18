@@ -205,7 +205,7 @@ class TimesGenerator:
                                                  'mean_processing_time', 'std_processing_time'])
         df_activity_desc.to_csv('output_files/Activity_description.csv', sep='|')
 
-    def _discover_model(self, **kwargs):
+    def _discover_model(self, **_kwargs):
         # indexes creation
         self.ac_index, self.index_ac = self._indexing(self.log.data, 'task')
         self.usr_index, self.index_usr = self._indexing(self.log.data, 'user')

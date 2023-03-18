@@ -13,6 +13,7 @@ import yaml
 import deep_simulator as ds
 from support_modules.common import EmbeddingMethods as Em
 from support_modules.common import InterArrivalGenerativeMethods as IaG
+from support_modules.common import SequencesGenerativeMethods as SqG
 
 
 @click.command()
@@ -28,13 +29,14 @@ from support_modules.common import InterArrivalGenerativeMethods as IaG
 @click.option('--s_gen_max_eval', default=30, required=False, type=int)
 @click.option('--t_gen_epochs', default=100, required=False, type=int)
 @click.option('--t_gen_max_eval', default=6, required=False, type=int)
-@click.option('--gen_method', default=IaG.PROPHET, required=False, type=click.Choice(IaG().get_methods()))
+@click.option('--seq_gen_method', default=SqG.PROCESS_MODEL, required=False, type=click.Choice(SqG().get_methods()))
+@click.option('--ia_gen_method', default=IaG.PROPHET, required=False, type=click.Choice(IaG().get_methods()))
 @click.option('--emb_method', default=Em.DOT_PROD, required=False, type=click.Choice(Em().get_types()))
 @click.option('--concat_method', default="single_sentence", required=False, type=str)
 @click.option('--include_times', default=False, required=False, type=bool)
 def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, save_models, evaluate, mining_alg,
-         s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval, gen_method, emb_method, concat_method,
-         include_times):
+         s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval, seq_gen_method, ia_gen_method, emb_method,
+         concat_method, include_times):
     params = dict()
     params['gl'] = dict()
     params['gl']['file'] = file
@@ -52,6 +54,7 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['gl']['exp_reps'] = 1
     # Sequences generator
     params['s_gen'] = dict()
+    params['s_gen']['gen_method'] = seq_gen_method  # stochastic_process_model, test
     params['s_gen']['repetitions'] = s_gen_repetitions
     params['s_gen']['max_eval'] = s_gen_max_eval
     params['s_gen']['concurrency'] = [0.0, 1.0]
@@ -63,7 +66,7 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['i_gen'] = dict()
     params['i_gen']['batch_size'] = 32  # Usually 32/64/128/256
     params['i_gen']['epochs'] = 2
-    params['i_gen']['gen_method'] = gen_method  # pdf, dl, mul_pdf, test, prophet
+    params['i_gen']['gen_method'] = ia_gen_method  # pdf, dl, mul_pdf, test, prophet
     # Times allocator parameters
     params['t_gen'] = dict()
     # emb_dot_product, emb_dot_product_times, emb_dot_product_act_weighting, emb_w2vec

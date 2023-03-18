@@ -42,14 +42,13 @@ class DeepSimulator:
     def execute_pipeline(self) -> None:
         exec_times = dict()
         self.is_safe = self._read_inputs(log_time=exec_times, is_safe=self.is_safe)
-        # modify number of instances in the model
-        num_inst = len(self.log_test.caseid.unique())
         # get minimum date
         start_time = (self.log_test.start_timestamp.min().strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"))
         print('############ Structure optimization ############')
         # Structure optimization
-        seq_gen = sg.SeqGenerator({**self.parms['gl'], **self.parms['s_gen']}, self.log_train)
-        print('############ Generate interarrivals ############')
+        seq_generator_class = sg.SeqGeneratorFabric.get_generator(self.parms['s_gen']['gen_method'])
+        seq_gen = seq_generator_class({**self.parms['gl'], **self.parms['s_gen']}, self.log_train)
+        print('############ Generate inter-arrivals ############')
         self.is_safe = self._read_bpmn(log_time=exec_times, is_safe=self.is_safe)
         generator = gen.InstancesGenerator(self.process_graph, self.log_train, self.parms['i_gen']['gen_method'],
                                            {**self.parms['gl'], **self.parms['i_gen']})
@@ -58,21 +57,13 @@ class DeepSimulator:
                                             {**self.parms['gl'], **self.parms['t_gen']})
         output_path = os.path.join('output_files', sup.folder_id())
         for rep_num in range(0, self.parms['gl']['exp_reps']):
+            seq_gen.generate(self.log_test, start_time)
             if self.parms['i_gen']['gen_method'] == 'test':
-                sequences = self.log_test.copy(deep=True)
-                sequences = sequences[['caseid', 'task', 'user', 'start_timestamp']]
-                replacements = {case_name: f'Case{idx+1}' for idx, case_name in enumerate(sequences['caseid'].unique())}
-                sequences.replace({'caseid': replacements}, inplace=True)
-                sequences = seq_gen.sort_log(sequences)
-                inter_arrival = generator.generate(sequences, start_time)
-                sequences = (sequences.rename(columns={'user': 'resource'})
-                             .drop(columns='start_timestamp')
-                             .sort_values(['caseid', 'pos_trace']))
+                inter_arrival = generator.generate(seq_gen.gen_seqs, start_time)
             else:
-                seq_gen.generate(num_inst, start_time)
-                sequences = seq_gen.gen_seqs
-                inter_arrival = generator.generate(num_inst, start_time)
-            event_log = times_allocator.generate(sequences, inter_arrival)
+                inter_arrival = generator.generate(len(self.log_test.caseid.unique()), start_time)
+            seq_gen.clean_time_stamps()
+            event_log = times_allocator.generate(seq_gen.gen_seqs, inter_arrival)
             event_log = pd.DataFrame(event_log)
             # Export log
             self._export_log(event_log, output_path, rep_num)
@@ -84,7 +75,7 @@ class DeepSimulator:
 
     @timeit
     @safe_exec
-    def _read_inputs(self, **kwargs) -> None:
+    def _read_inputs(self, **_kwargs) -> None:
         # Event log reading
         self.log = lr.LogReader(os.path.join(self.parms['gl']['event_logs_path'], self.parms['gl']['file']),
                                 self.parms['gl']['read_options'])
@@ -93,7 +84,7 @@ class DeepSimulator:
 
     @timeit
     @safe_exec
-    def _read_bpmn(self, **kwargs) -> None:
+    def _read_bpmn(self, **_kwargs) -> None:
         bpmn_path = os.path.join(self.parms['gl']['bpmn_models'], self.parms['gl']['file'].split('.')[0] + '.bpmn')
         self.bpmn = br.BpmnReader(bpmn_path)
         self.process_graph = gph.create_process_structure(self.bpmn)

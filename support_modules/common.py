@@ -6,6 +6,34 @@ from readers.log_splitter import LogSplitter
 
 
 @dataclass
+class FileExtensions:
+    BPMN: str = '.bpmn'
+    H5: str = '.h5'
+    XES: str = '.xes'
+    CSV: str = '.csv'
+    JSON: str = '.json'
+
+
+@dataclass
+class LogAttributes:
+    CASE_ID: str = 'caseid'
+    ACTIVITY: str = 'task'
+    START_TIME: str = 'start_timestamp'
+    END_TIME: str = 'end_timestamp'
+    RESOURCE: str = 'user'
+    ROLE: str = 'role'
+
+
+@dataclass
+class SequencesGenerativeMethods:
+    PROCESS_MODEL: str = 'stochastic_process_model'
+    TEST: str = 'test'
+
+    def get_methods(self) -> List[str]:
+        return list(self.__dict__.values())
+
+
+@dataclass
 class InterArrivalGenerativeMethods:
     PDF: str = 'pdf'
     DL: str = 'dl'
