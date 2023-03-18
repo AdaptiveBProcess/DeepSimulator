@@ -97,7 +97,7 @@ class StochasticProcessModelGenerator(SeqGenerator):
         sim_log = self.sort_log(sim_log)
         sim_log[La.CASE_ID] = sim_log[La.CASE_ID] + 1
         sim_log[La.CASE_ID] = sim_log[La.CASE_ID].astype('string')
-        sim_log[La.CASE_ID] = 'Case' + sim_log[La.CASE_ID]
+        sim_log[La.CASE_ID] = f"Case{sim_log[La.CASE_ID]}"
         return sim_log
 
     def clean_time_stamps(self):
@@ -116,7 +116,7 @@ class StochasticProcessModelGenerator(SeqGenerator):
         structure_optimizer = so.StructureOptimizer(self.parameters, copy.deepcopy(self.log_train))
         structure_optimizer.execute_trials()
         struc_model = structure_optimizer.best_output
-        best_parms = structure_optimizer.best_parms
+        best_parameters = structure_optimizer.best_parms
         best_similarity = structure_optimizer.best_similarity
         metadata_file = os.path.join(self.parameters['bpmn_models'],
                                      f"{self.parameters['file'].split('.')[0]}_meta{Fe.JSON}")
@@ -127,7 +127,7 @@ class StochasticProcessModelGenerator(SeqGenerator):
             save = self._loading_parameters_from_existing_model(best_similarity, metadata_file, save)
         if save:
             # best structure mining parameters
-            self._extract_model_metadata(best_parms, best_similarity)
+            self._extract_model_metadata(best_parameters, best_similarity)
             # Copy best model to destination folder
             self._copy_best_model(struc_model)
             # Save metadata
@@ -141,14 +141,14 @@ class StochasticProcessModelGenerator(SeqGenerator):
         source = os.path.join(struc_model, file_name)
         shutil.copyfile(source, destination)
 
-    def _extract_model_metadata(self, best_parms, best_similarity):
-        self.model_metadata['alg_manag'] = (self.parameters['alg_manag'][best_parms['alg_manag']])
-        self.model_metadata['gate_management'] = (self.parameters['gate_management'][best_parms['gate_management']])
+    def _extract_model_metadata(self, best_parameters, best_similarity):
+        self.model_metadata['alg_manag'] = (self.parameters['alg_manag'][best_parameters['alg_manag']])
+        self.model_metadata['gate_management'] = (self.parameters['gate_management'][best_parameters['gate_management']])
         if self.parameters['mining_alg'] == 'sm1':
-            self.model_metadata['epsilon'] = best_parms['epsilon']
-            self.model_metadata['eta'] = best_parms['eta']
+            self.model_metadata['epsilon'] = best_parameters['epsilon']
+            self.model_metadata['eta'] = best_parameters['eta']
         elif self.parameters['mining_alg'] == 'sm2':
-            self.model_metadata['concurrency'] = best_parms['concurrency']
+            self.model_metadata['concurrency'] = best_parameters['concurrency']
         self.model_metadata['similarity'] = best_similarity
         self.model_metadata['generated_at'] = (datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
 
@@ -177,12 +177,12 @@ class StochasticProcessModelGenerator(SeqGenerator):
     def _modify_simulation_model(model, num_inst, start_time):
         """Modifies the number of instances of the BIMP simulation model
         to be equal to the number of instances in the testing log"""
-        mydoc = minidom.parse(model)
-        items = mydoc.getElementsByTagName('qbp:processSimulationInfo')
+        my_doc = minidom.parse(model)
+        items = my_doc.getElementsByTagName('qbp:processSimulationInfo')
         items[0].attributes['processInstances'].value = str(num_inst)
         items[0].attributes['startDateTime'].value = start_time
         with open(model, 'wb') as f:
-            f.write(mydoc.toxml().encode('utf-8'))
+            f.write(my_doc.toxml().encode('utf-8'))
         f.close()
 
     @staticmethod
