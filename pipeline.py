@@ -6,6 +6,7 @@ Created on Fri Jun 26 13:27:58 2020
 """
 import os
 import sys
+from pathlib import Path
 
 import click
 import yaml
@@ -105,7 +106,8 @@ def read_properties(params):
         properties = yaml.load(f, Loader=yaml.FullLoader)
     if properties is None:
         raise ValueError('Properties is empty')
-    params['gl'] = {**params['gl'], **properties}
+    paths = {k: os.path.join(*path.split('\\')) for k, path in properties.pop('paths').items()}
+    params['gl'] = {**params['gl'], **properties, **paths}
     return params
 
 
