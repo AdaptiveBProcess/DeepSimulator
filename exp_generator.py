@@ -6,6 +6,7 @@ Created on Mon Jan 18 15:04:49 2021
 """
 import os
 import time
+
 import utils.support as sup
 
 
@@ -20,15 +21,15 @@ def create_file_list(path):
             file_list.append(f)
     return file_list
 
+
 # =============================================================================
 # Sbatch files creator
 # =============================================================================
 
 
 def sbatch_creator(log, miner):
-    exp_name = (os.path.splitext(log)[0]
-                    .lower()
-                    .split(' ')[0][:5])
+    exp_name = (os.path.splitext(log)[0].lower().split(' ')[0][:5])
+    options = f'python pipeline.py --file "{log}"'
     if imp == 2:
         default = ['#!/bin/bash',
                    '#SBATCH --partition=gpu',
@@ -38,38 +39,36 @@ def sbatch_creator(log, miner):
                    '#SBATCH --cpus-per-task=20',
                    '#SBATCH --mem=32000',
                    '#SBATCH -t 120:00:00',
-                   'export DISPLAY='+ip_num,
-                   'module load jdk-1.8.0_25',
-                   'module load python/3.6.3/virtenv',
-                   'source activate deep_sim3',
+                   'export DISPLAY=' + ip_num,
+                   'module load any/python/3.8.3-conda',
+                   'module load any/java/1.8.0_265',
+                   'module load cuda/10.0',
+                   'conda deactivate',
+                   'conda activate deep_simulator'
                    ]
     else:
         default = ['#!/bin/bash',
                    '#SBATCH --partition=main',
-                   '#SBATCH -J '+exp_name,
+                   '#SBATCH -J ' + exp_name,
                    '#SBATCH -N 1',
                    '#SBATCH --cpus-per-task=20',
                    '#SBATCH --mem=32000',
                    '#SBATCH -t 120:00:00',
-                   'export DISPLAY='+ip_num,
-                   'module load jdk-1.8.0_25',
-                   'module load python/3.6.3/virtenv',
-                   'source activate deep_sim3',
+                   'export DISPLAY=' + ip_num,
+                   'module load any/python/3.8.3-conda',
+                   'module load any/java/1.8.0_265',
+                   'module load cuda/10.0',
+                   'conda deactivate',
+                   'conda activate deep_simulator'
                    ]
+        options += ' --seq_gen_method test'
+        options += ' --ia_gen_method test'
 
-        options = 'python pipeline.py -f ' + log
-        options += ' -g False'
-        options += ' -i False'
-        options += ' -p False'
-        options += ' -t False'
-        options += ' -s True'
-        options += ' -e True'
-        options += ' -m '+miner
-        
     default.append(options)
     file_name = sup.folder_id()
     sup.create_text_file(default, os.path.join(output_folder, file_name))
-    
+
+
 # =============================================================================
 # Sbatch files submission
 # =============================================================================
@@ -81,11 +80,12 @@ def sbatch_submit(in_batch, bsize=20):
         if in_batch:
             if (i % bsize) == 0:
                 time.sleep(20)
-                os.system('sbatch '+os.path.join(output_folder, file_list[i]))
+                os.system('sbatch ' + os.path.join(output_folder, file_list[i]))
             else:
-                os.system('sbatch '+os.path.join(output_folder, file_list[i]))
+                os.system('sbatch ' + os.path.join(output_folder, file_list[i]))
         else:
-            os.system('sbatch '+os.path.join(output_folder, file_list[i]))
+            os.system('sbatch ' + os.path.join(output_folder, file_list[i]))
+
 
 # =============================================================================
 # Kernel
@@ -95,7 +95,7 @@ def sbatch_submit(in_batch, bsize=20):
 # create output folder
 output_folder = 'jobs_files'
 # Xserver ip
-ip_num = '172.17.156.11:0.0'
+ip_num = '172.30.176.1:0.0'
 
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
@@ -107,20 +107,16 @@ for _, _, files in os.walk(output_folder):
 # parameters definition
 imp = 1  # keras lstm implementation 1 cpu, 2 gpu
 logs = [
-        # ('BPI_Challenge_2012_W_Two_TS.xes', 'sm3'),
-        # ('BPI_Challenge_2017_W_Two_TS.xes', 'sm3'),
-        # ('PurchasingExample.xes', 'sm3'),
-        # ('Production.xes', 'sm3'),
-        # ('ConsultaDataMining201618.xes', 'sm3'),
-        # ('insurance.xes', 'sm2'),
-        # ('callcentre.xes', 'sm3'),
-        # ('poc_processmining.xes', 'sm3'),
-        # ('confidential_1000.xes', 'sm3'),
-        # ('confidential_2000.xes', 'sm3'),
-        # ('cvs_pharmacy.xes', 'sm3'),
-		('cvs_10000_complete.xes', 'sm3'),
-		('cvs_10000_modified.xes', 'sm3')
-        ]
+    ('BPI_Challenge_2012_W_Two_TS.xes', 'sm3'),
+    ('BPI_Challenge_2017_W_Two_TS.xes', 'sm3'),
+    ('PurchasingExample.xes', 'sm3'),
+    ('Production.xes', 'sm3'),
+    ('ConsultaDataMining201618.xes', 'sm3'),
+    ('insurance.xes', 'sm2'),
+    ('confidential_1000.xes', 'sm3'),
+    ('confidential_2000.xes', 'sm3'),
+    ('cvs_pharmacy.xes', 'sm3'),
+]
 
 for log, miner in logs:
     # sbatch creation
