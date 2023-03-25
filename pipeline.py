@@ -27,6 +27,7 @@ from support_modules.common import W2VecConcatMethod as Cm
 @click.option('--save_models/--no-save_models', default=True, required=False, type=bool)
 @click.option('--evaluate/--no-evaluate', default=True, required=False, type=bool)
 @click.option('--mining_alg', default=Sm.SM_V1, required=False, type=click.Choice(Sm().get_methods()))
+@click.option('--exp_reps', default=5, required=False, type=int)
 @click.option('--s_gen_repetitions', default=5, required=False, type=int)
 @click.option('--s_gen_max_eval', default=30, required=False, type=int)
 @click.option('--t_gen_epochs', default=200, required=False, type=int)
@@ -37,8 +38,8 @@ from support_modules.common import W2VecConcatMethod as Cm
 @click.option('--concat_method', default=Cm.SINGLE_SENTENCE, required=False, type=click.Choice(Cm().get_methods()))
 @click.option('--include_times', default=False, required=False, type=bool)
 def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, save_models, evaluate, mining_alg,
-         s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval, seq_gen_method, ia_gen_method, emb_method,
-         concat_method, include_times):
+         exp_reps, s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval, seq_gen_method, ia_gen_method,
+         emb_method, concat_method, include_times):
     params = dict()
     params['gl'] = dict()
     params['gl']['file'] = file
@@ -53,7 +54,7 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['gl']['sim_metric'] = 'tsd'  # Main metric
     # Additional metrics
     params['gl']['add_metrics'] = ['day_hour_emd', 'log_mae', 'dl', 'mae']
-    params['gl']['exp_reps'] = 1
+    params['gl']['exp_reps'] = exp_reps
     # Sequences generator
     params['s_gen'] = dict()
     params['s_gen']['gen_method'] = seq_gen_method  # stochastic_process_model, test
