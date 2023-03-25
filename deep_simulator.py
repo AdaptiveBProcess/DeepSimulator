@@ -159,19 +159,10 @@ class DeepSimulator:
         embedded_path = params['gl']['embedded_path']
         concat_method = params['t_gen']['concat_method']
         include_times = params['t_gen']['include_times']
-
-        if params['t_gen']['emb_method'] == 'emb_dot_product':
-            emb_path = os.path.join(embedded_path, 'ac_DP_' + file_name.split('.')[0] + '.emb')
-        elif params['t_gen']['emb_method'] == 'emb_w2vec':
-            emb_path = os.path.join(embedded_path,
-                                    'ac_W2V_' + '{}_'.format(concat_method) + file_name.split('.')[0] + '.emb')
-        elif params['t_gen']['emb_method'] == 'emb_dot_product_times':
-            emb_path = os.path.join(embedded_path, 'ac_DP_times_' + file_name.split('.')[0] + '.emb')
-        elif params['t_gen']['emb_method'] == 'emb_dot_product_act_weighting' and include_times:
-            emb_path = os.path.join(embedded_path, 'ac_DP_act_weighting_times_' + file_name.split('.')[0] + '.emb')
-        elif params['t_gen']['emb_method'] == 'emb_dot_product_act_weighting' and not include_times:
-            emb_path = os.path.join(embedded_path, 'ac_DP_act_weighting_no_times_' + file_name.split('.')[0] + '.emb')
-
+        emb_method = params['t_gen']['emb_method']
+        emb_path = os.path.join(embedded_path,
+                                cm.EmbeddingMethods.get_matrix_file_name(emb_method, include_times, concat_method,
+                                                                         file_name))
         df_embeddings = pd.read_csv(emb_path, header=None)
         n_cols = len(df_embeddings.columns)
         df_embeddings.columns = ['id', 'task_name'] + ['id_{}'.format(idx) for idx in range(1, n_cols - 1)]
@@ -239,13 +230,28 @@ class DeepSimulator:
                 elif not is_dual and ('times_gen_models' in source) and any(
                         [self.parms['gl']['file'].split('.')[0] + x in source for x in allowed_ext]):
                     shutil.copyfile(source, destination)
+                # copy embedding models
+                if 'embedded_matrix' in source:
+                    self._copy_embeddings(destination, source, self.parms['t_gen']['emb_method'],
+                                          self.parms['t_gen']['include_times'], self.parms['t_gen']['concat_method'],
+                                          self.parms['gl']['file'])
                 # copy other models
-                folders = ['bpmn_models', 'embedded_matix', 'ia_gen_models']
-                allowed_ext = ['.emb', '.bpmn', '_mpdf.json', '_prf.json', '_prf_meta.json', '_mpdf_meta.json',
+                folders = ['bpmn_models', 'ia_gen_models']
+                allowed_ext = ['.bpmn', '_mpdf.json', '_prf.json', '_prf_meta.json', '_mpdf_meta.json',
                                '_meta.json']
                 if any([x in source for x in folders]) and any(
                         [self.parms['gl']['file'].split('.')[0] + x in source for x in allowed_ext]):
                     shutil.copyfile(source, destination)
+
+    @staticmethod
+    def _copy_embeddings(destination, source, emb_method, include_times, concat_method, file_name):
+        emb_file_name = cm.EmbeddingMethods.get_matrix_file_name(emb_method, include_times, concat_method, file_name)
+        if emb_file_name in source:
+            shutil.copyfile(source, destination)
+        if emb_method not in cm.EmbeddingMethods.W2VEC:
+            model_file_name = cm.EmbeddingMethods.get_model_file_name(emb_method, include_times, file_name)
+            if model_file_name in source:
+                shutil.copyfile(source, destination)
 
     def _save_embedding_metrics_results(self, output_path, results_df):
         # Save results
@@ -258,11 +264,12 @@ class DeepSimulator:
         results_df_t['embedding_method'] = cm.EmbeddingMethods.get_base_model(self.parms['t_gen']['emb_method'])
         results_df_t['log_name'] = self.parms['gl']['file']
         results_df_t['times_included'] = include_times
-        results_df_t.to_csv(os.path.join('output_files', cm.EmbeddingMethods.get_file_path(
-            self.parms['t_gen']['emb_method'],
-            self.parms['t_gen']['emb_method'],
-            self.parms['t_gen']['include_times'],
-            self.parms['t_gen']['concat_method'])), index=False)
+        results_df_t.to_csv(os.path.join('output_files',
+                                         cm.EmbeddingMethods.get_metrics_file_path(self.parms['t_gen']['emb_method'],
+                                                                                   self.parms['t_gen']['emb_method'],
+                                                                                   self.parms['t_gen']['include_times'],
+                                                                                   self.parms['t_gen'][
+                                                                                       'concat_method'])), index=False)
 
     @staticmethod
     def _define_model_path(parms):

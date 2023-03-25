@@ -12,6 +12,7 @@ class FileExtensions:
     XES: str = '.xes'
     CSV: str = '.csv'
     JSON: str = '.json'
+    EMB: str = '.emb'
 
 
 @dataclass
@@ -22,6 +23,7 @@ class LogAttributes:
     END_TIME: str = 'end_timestamp'
     RESOURCE: str = 'user'
     ROLE: str = 'role'
+    TIMESTAMP: str = 'timestamp'
 
 
 @dataclass
@@ -40,6 +42,26 @@ class InterArrivalGenerativeMethods:
     MULTI_PDF: str = 'mul_pdf'
     TEST: str = 'test'
     PROPHET: str = 'prophet'
+
+    def get_methods(self) -> List[str]:
+        return list(self.__dict__.values())
+
+
+@dataclass
+class W2VecConcatMethod:
+    SINGLE_SENTENCE: str = 'single_sentence'
+    FULL_SENTENCE: str = 'full_sentence'
+    WEIGHTING: str = 'weighting'
+
+    def get_methods(self) -> List[str]:
+        return list(self.__dict__.values())
+
+
+@dataclass
+class SplitMinerVersion:
+    SM_V1: str = 'sm1'
+    SM_V2: str = 'sm2'
+    SM_V3: str = 'sm3'
 
     def get_methods(self) -> List[str]:
         return list(self.__dict__.values())
@@ -71,7 +93,7 @@ class EmbeddingMethods:
             return 'Activity weighting', include_times
 
     @classmethod
-    def get_file_path(cls, method, include_times, concat_method, file_name):
+    def get_metrics_file_path(cls, method, include_times, concat_method, file_name):
         name = file_name.split('.')[0]
         _, inc_times = cls.get_input_and_times_method(method, include_times, concat_method)
         times = 'times' if inc_times else 'no_times'
@@ -81,6 +103,34 @@ class EmbeddingMethods:
             return f"ac_DP_act_weighting_{times}_{name}.csv"
         elif method == cls.W2VEC:
             return f"ac_W2V_{concat_method}_{times}_{name}.csv"
+
+    @classmethod
+    def get_matrix_file_name(cls, method, include_times, concat_method, file_name):
+        name = file_name.split('.')[0]
+        if method == cls.DOT_PROD:
+            return f"ac_DP_{name}{FileExtensions.EMB}"
+        elif method == cls.W2VEC:
+            return f"ac_W2V_{concat_method}_{name}{FileExtensions.EMB}"
+        elif method == cls.DOT_PROD_TIMES:
+            return f"ac_DP_times_{name}{FileExtensions.EMB}"
+        elif method == cls.DOT_PROD_ACT_WEIGHT and include_times:
+            return f"ac_DP_act_weighting_times_{name}{FileExtensions.EMB}"
+        elif method == cls.DOT_PROD_ACT_WEIGHT and not include_times:
+            return f"ac_DP_act_weighting_no_times_{name}{FileExtensions.EMB}"
+
+    @classmethod
+    def get_model_file_name(cls, method, include_times, file_name):
+        name = file_name.split('.')[0]
+        if method == cls.DOT_PROD:
+            return f"ac_DP_{name}_emb{FileExtensions.H5}"
+        elif method == cls.DOT_PROD_TIMES:
+            return f"ac_DP_times_{name}_emb{FileExtensions.H5}"
+        elif method == cls.DOT_PROD_ACT_WEIGHT and include_times:
+            return f"ac_DP_act_weighting_times_{name}_emb{FileExtensions.H5}"
+        elif method == cls.DOT_PROD_ACT_WEIGHT and not include_times:
+            return f"ac_DP_act_weighting_no_times_{name}_emb{FileExtensions.H5}"
+        else:
+            return None
 
     def get_types(self) -> List[str]:
         return list(self.__dict__.values())
@@ -97,3 +147,6 @@ def split_log(log, one_ts, size):
     validation = pd.DataFrame(validation)
     train = pd.DataFrame(train)
     return train, validation
+
+
+OUTPUT_FILES = 'output_files'

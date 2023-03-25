@@ -7,54 +7,38 @@ Created on Wed Nov 21 21:23:55 2018
 import itertools
 import math
 import os
-import random
 
 import numpy as np
 import pandas as pd
 import utils.support as sup
+from support_modules.common import FileExtensions as Fe
+from keras.callbacks import ModelCheckpoint
 from keras.layers import Input, Embedding, Dot, Reshape
 from keras.models import Model
-from tensorflow.keras.callbacks import ModelCheckpoint
+
+from core_modules.times_allocator.embedding_base import EmbeddingBase
 
 
-class EmbeddingTrainer:
+class EmbeddingTrainer(EmbeddingBase):
     """
     This class evaluates the inter-arrival times
     """
-
-    def __init__(self, params, log, ac_index, index_ac, usr_index, index_usr):
-        # Define the number of dimensions as the 4th root of the # of categories
-        self.ac_weights = []
-        self.log = log.copy()
-        self.ac_index = ac_index
-        self.index_ac = index_ac
-        self.usr_index = usr_index
-        self.index_usr = index_usr
-        self.file_name = params['file']
-        self.embedded_path = params['embedded_path']
-
     def load_embeddings(self):
         # Load embedded matrix
-        ac_emb = 'ac_DP_' + self.file_name.split('.')[0] + '.emb'
-        if os.path.exists(os.path.join(self.embedded_path, ac_emb)):
-            return self._read_embedded(self.index_ac, ac_emb)
+        if os.path.exists(os.path.join(self.embedded_path, self.embedding_file_name)):
+            return self._read_embedded(self.index_ac, self.embedding_file_name)
         else:
-            usr_idx = lambda x: self.usr_index.get(x['user'])
-            self.log['usr_index'] = self.log.apply(usr_idx, axis=1)
+            self.log['usr_index'] = self.log.apply(lambda x: self.usr_index.get(x['user']), axis=1)
 
             dim_number = math.ceil(
-                len(list(itertools.product(*[list(self.ac_index.items()),
-                                             list(self.usr_index.items())]))) ** 0.25)
+                len(list(itertools.product(*[list(self.ac_index.items()), list(self.usr_index.items())]))) ** 0.25)
             self._train_embedded(dim_number)
 
             if not os.path.exists(self.embedded_path):
                 os.makedirs(self.embedded_path)
 
             matrix = self._reformat_matrix(self.index_ac, self.ac_weights)
-            sup.create_file_from_list(
-                matrix,
-                os.path.join(self.embedded_path,
-                             'ac_DP_' + self.file_name.split('.')[0] + '.emb'))
+            sup.create_file_from_list(matrix, os.path.join(self.embedded_path, self.embedding_file_name))
             return self.ac_weights
 
     # =============================================================================
@@ -67,12 +51,10 @@ class EmbeddingTrainer:
         model = self._create_model(dim_number)
         model.summary()
 
-        vec, cl = self._vectorize_input(self.log, negative_ratio=2)
+        vec, cl = self.vectorize_input(self.log, negative_ratio=2)
 
         # Output file
-        output_file_path = os.path.join(self.embedded_path,
-                                        self.file_name.split('.')[0] +
-                                        '_emb.h5')
+        output_file_path = os.path.join(self.embedded_path, self.embedding_model_file_name)
         # Saving
         model_checkpoint = ModelCheckpoint(output_file_path,
                                            monitor='val_loss',
@@ -91,46 +73,6 @@ class EmbeddingTrainer:
         # Extract embeddings
         ac_layer = model.get_layer('activity_embedding')
         self.ac_weights = ac_layer.get_weights()[0]
-
-    def _vectorize_input(self, log, negative_ratio=1.0):
-        """Generate batches of samples for training"""
-        pairs = list()
-        for i in range(0, len(self.log)):
-            # Iterate through the links in the book
-            pairs.append((self.ac_index[self.log.iloc[i]['task']],
-                          self.usr_index[self.log.iloc[i]['user']]))
-
-        n_positive = math.ceil(len(self.log) / 2)
-        batch_size = n_positive * (1 + negative_ratio)
-        batch = np.zeros((batch_size, 3))
-        pairs_set = set(pairs)
-        activities = list(self.ac_index.keys())
-        users = list(self.usr_index.keys())
-        # This creates a generator
-        # randomly choose positive examples
-        idx = 0
-        for idx, (activity, user) in enumerate(random.sample(pairs,
-                                                             n_positive)):
-            batch[idx, :] = (activity, user, 1)
-        # Increment idx by 1
-        idx += 1
-
-        # Add negative examples until reach batch size
-        while idx < batch_size:
-            # random selection
-            random_ac = random.randrange(len(activities) - 1)
-            random_rl = random.randrange(len(users) - 1)
-
-            # Check to make sure this is not a positive example
-            if (random_ac, random_rl) not in pairs_set:
-                # Add to batch and increment index,  0 due classification task
-                batch[idx, :] = (random_ac, random_rl, 0)
-                idx += 1
-
-        # Make sure to shuffle order
-        np.random.shuffle(batch)
-        return {'activity': batch[:, 0], 'user': batch[:, 1]}, batch[:, 2]
-        #     yield 
 
     def _create_model(self, embedding_size):
         """Model to embed activities and users using the functional API"""
@@ -151,8 +93,7 @@ class EmbeddingTrainer:
 
         # Merge the layers with a dot product
         # along the second axis (shape will be (None, 1, 1))
-        merged = Dot(name='dot_product',
-                     normalize=True, axes=2)([activity_embedding, user_embedding])
+        merged = Dot(name='dot_product', normalize=True, axes=2)([activity_embedding, user_embedding])
 
         # Reshape to be a single number (shape will be (None, 1))
         merged = Reshape(target_shape=[1])(merged)

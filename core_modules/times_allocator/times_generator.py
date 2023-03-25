@@ -179,11 +179,11 @@ class TimesGenerator:
         return list(f.get_best(method='sumsquare_error').keys())[0]
 
     def extract_day_moment(self, start_timestamp):
-        if start_timestamp.hour >= 0 and start_timestamp.hour < 12:
+        if 0 <= start_timestamp.hour < 12:
             return 'morning'
-        elif start_timestamp.hour >= 12 and start_timestamp.hour < 17:
+        elif 12 <= start_timestamp.hour < 17:
             return 'afternoon'
-        elif start_timestamp.hour >= 17 and start_timestamp.hour < 24:
+        elif 17 <= start_timestamp.hour < 24:
             return 'night'
 
     def extract_description_activities(self, log):
@@ -239,12 +239,12 @@ class TimesGenerator:
         # Optimizer
         self.parms['output'] = os.path.join('output_files', sup.folder_id())
         if self.parms['opt_method'] == 'rand_hpc':
-            times_optimizer = hpc_op.ModelHPCOptimizer(self.parms, self.log_train,
-                                                       self.log_valdn, self.ac_index, self.ac_weights)
+            times_optimizer = hpc_op.ModelHPCOptimizer(self.parms, self.log_train, self.log_valdn,
+                                                       self.ac_index, emb_trainer.embedding_file_name)
             times_optimizer.execute_trials()
         elif self.parms['opt_method'] == 'bayesian':
-            times_optimizer = to.TimesModelOptimizer(self.parms, self.log_train,
-                                                     self.log_valdn, self.ac_index, self.ac_weights)
+            times_optimizer = to.TimesModelOptimizer(self.parms, self.log_train, self.log_valdn,
+                                                     self.ac_index, emb_trainer.embedding_file_name)
             times_optimizer.execute_trials()
         return times_optimizer
 
@@ -273,7 +273,7 @@ class TimesGenerator:
         else:
             log[feat] = log[feat].fillna('sys')
         subsec_set = log[feat].unique().tolist()
-        subsec_set = [x for x in subsec_set if not x in ['Start', 'End']]
+        subsec_set = [x for x in subsec_set if x not in ['Start', 'End']]
         index = dict()
         for i, _ in enumerate(subsec_set):
             index[subsec_set[i]] = i + 1

@@ -4,27 +4,29 @@ Created on Tue Nov 17 10:48:57 2020
 
 @author: Manuel Camargo
 """
-import os
 import copy
+import csv
+import os
 import traceback
+
+import numpy as np
 import pandas as pd
-from hyperopt import tpe
-from hyperopt import Trials, hp, fmin, STATUS_OK, STATUS_FAIL
-
-import utils.support as sup
-
 import tensorflow as tf
+import utils.support as sup
+from hyperopt import Trials, hp, fmin, STATUS_OK, STATUS_FAIL
+from hyperopt import tpe
+
 from core_modules.times_allocator import samples_creator as sc
 from core_modules.times_allocator.models import basic_model as bsc
-from core_modules.times_allocator.models import dual_model as dual
 from core_modules.times_allocator.models import basic_model_nt as innt
+from core_modules.times_allocator.models import dual_model as dual
 
 
-
-class TimesModelOptimizer():
+class TimesModelOptimizer:
     """
     Hyperparameter-optimizer class
     """
+
     class Decorators(object):
 
         @classmethod
@@ -37,6 +39,7 @@ class TimesModelOptimizer():
             -------
             dict : execution status
             """
+
             def safety_check(*args, **kw):
                 status = kw.get('status', method.__name__.upper())
                 response = {'values': [], 'status': status}
@@ -48,17 +51,21 @@ class TimesModelOptimizer():
                         traceback.print_exc()
                         response['status'] = STATUS_FAIL
                 return response
+
             return safety_check
-        
-    def __init__(self, parms, log_train, log_valdn, ac_index, ac_weights):
+
+    def __init__(self, parms, log_train, log_valdn, ac_index, embedding_file_name):
         """constructor"""
         self.space = self.define_search_space(parms)
         self.log_train = copy.deepcopy(log_train)
         self.log_valdn = copy.deepcopy(log_valdn)
         self.ac_index = ac_index
-        self.ac_weights = ac_weights
+        self.index_ac = {v: k for k, v in self.ac_index.items()}
+        self.embedding_file_name = embedding_file_name
+        self.ac_weights = None
         # Load settings
         self.parms = parms
+        self.read_embeddings()
         self.temp_output = parms['output']
         if not os.path.exists(self.temp_output):
             os.makedirs(self.temp_output)
@@ -71,7 +78,7 @@ class TimesModelOptimizer():
         self.best_output = None
         self.best_parms = dict()
         self.best_loss = 1
-        
+
     @staticmethod
     def define_search_space(parms):
         space = {'n_size': hp.choice('n_size', parms['n_size']),
@@ -94,12 +101,9 @@ class TimesModelOptimizer():
             status = rsp['status']
             trial_stg = rsp['values'] if status == STATUS_OK else trial_stg
             # Vectorize input
-            vectorizer = sc.SequencesCreator(
-                self.parms['read_options']['one_timestamp'], self.ac_index)
-            train_vec = vectorizer.vectorize(
-                self.parms['model_type'], self.log_train, trial_stg)
-            valdn_vec = vectorizer.vectorize(
-                self.parms['model_type'], self.log_valdn, trial_stg)
+            vectorizer = sc.SequencesCreator(self.parms['read_options']['one_timestamp'], self.ac_index)
+            train_vec = vectorizer.vectorize(self.parms['model_type'], self.log_train, trial_stg)
+            valdn_vec = vectorizer.vectorize(self.parms['model_type'], self.log_valdn, trial_stg)
             # Train
             trainer = self._get_trainer(self.parms['model_type'])
             tf.compat.v1.reset_default_graph()
@@ -150,6 +154,11 @@ class TimesModelOptimizer():
             os.makedirs(settings['output'])
         return settings
 
+    def read_embeddings(self):
+        # Load embedded matrix
+        if os.path.exists(os.path.join(self.parms['embedded_path'], self.embedding_file_name)):
+            self.ac_weights = self.load_embedded(self.index_ac, self.parms['embedded_path'], self.embedding_file_name)
+
     def _define_response(self, parms, status, loss, **kwargs) -> None:
         print(loss)
         response = dict()
@@ -164,7 +173,7 @@ class TimesModelOptimizer():
             response['loss'] = loss
             response['status'] = status if loss > 0 else STATUS_FAIL
             measurements.append({**{'loss': loss,
-                                    'sim_metric': 'mae', 
+                                    'sim_metric': 'mae',
                                     'status': response['status']},
                                  **data})
         else:
@@ -178,7 +187,7 @@ class TimesModelOptimizer():
         else:
             sup.create_csv_file_header(measurements, self.file_name)
         return response
-    
+
     def evaluate_model(self, model_type, model, valdn_vec):
         if model_type in ['inter', 'basic']:
             return model.evaluate(
@@ -206,7 +215,25 @@ class TimesModelOptimizer():
                    'features': valdn_vec['waiting_model']['pref']['features']},
                 y={'time_output': valdn_vec['waiting_model']['next']},
                 return_dict=True)
-            return {'loss': (0.5*acc_proc['loss']) + (0.5*acc_wait['loss'])}
+            return {'loss': (0.5 * acc_proc['loss']) + (0.5 * acc_wait['loss'])}
         else:
             raise ValueError('Unexistent model')
-    
+
+    @staticmethod
+    def load_embedded(index, input_folder, filename):
+        """Loading of the embedded matrices.
+        parms:
+            index (dict): index of activities or roles.
+            filename (str): filename of the matrix file.
+        Returns:
+            numpy array: array of weights.
+        """
+        weights = list()
+        with open(os.path.join(input_folder, filename), 'r') as csvfile:
+            filereader = csv.reader(csvfile, delimiter=',', quotechar='"')
+            for row in filereader:
+                cat_ix = int(row[0])
+                if index[cat_ix] == row[1].strip():
+                    weights.append([float(x) for x in row[2:]])
+            csvfile.close()
+        return np.array(weights)

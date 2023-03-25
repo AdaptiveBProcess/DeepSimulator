@@ -11,9 +11,11 @@ import click
 import yaml
 
 import deep_simulator as ds
-from support_modules.common import EmbeddingMethods as Em
+from support_modules.common import EmbeddingMethods as Em, OUTPUT_FILES
 from support_modules.common import InterArrivalGenerativeMethods as IaG
 from support_modules.common import SequencesGenerativeMethods as SqG
+from support_modules.common import W2VecConcatMethod as Cm
+from support_modules.common import SplitMinerVersion as Sm
 
 
 @click.command()
@@ -24,7 +26,7 @@ from support_modules.common import SequencesGenerativeMethods as SqG
 @click.option('--update_times_gen/--no-update_times_gen', default=False, required=False, type=bool)
 @click.option('--save_models/--no-save_models', default=True, required=False, type=bool)
 @click.option('--evaluate/--no-evaluate', default=True, required=False, type=bool)
-@click.option('--mining_alg', default='sm1', required=False, type=click.Choice(['sm1', 'sm2', 'sm3']))
+@click.option('--mining_alg', default=Sm.SM_V1, required=False, type=click.Choice(Sm().get_methods()))
 @click.option('--s_gen_repetitions', default=5, required=False, type=int)
 @click.option('--s_gen_max_eval', default=30, required=False, type=int)
 @click.option('--t_gen_epochs', default=100, required=False, type=int)
@@ -32,7 +34,7 @@ from support_modules.common import SequencesGenerativeMethods as SqG
 @click.option('--seq_gen_method', default=SqG.PROCESS_MODEL, required=False, type=click.Choice(SqG().get_methods()))
 @click.option('--ia_gen_method', default=IaG.PROPHET, required=False, type=click.Choice(IaG().get_methods()))
 @click.option('--emb_method', default=Em.DOT_PROD, required=False, type=click.Choice(Em().get_types()))
-@click.option('--concat_method', default="single_sentence", required=False, type=str)
+@click.option('--concat_method', default=Cm.SINGLE_SENTENCE, required=False, type=click.Choice(Cm().get_methods()))
 @click.option('--include_times', default=False, required=False, type=bool)
 def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, save_models, evaluate, mining_alg,
          s_gen_repetitions, s_gen_max_eval, t_gen_epochs, t_gen_max_eval, seq_gen_method, ia_gen_method, emb_method,
@@ -90,6 +92,8 @@ def main(file, update_gen, update_ia_gen, update_mpdf_gen, update_times_gen, sav
     params['t_gen']['reschedule'] = False  # reschedule according resource pool occupation
     params['t_gen']['rp_similarity'] = 0.80  # Train models
 
+    _ensure_locations(params)
+
     simulator = ds.DeepSimulator(params)
     simulator.execute_pipeline()
 
@@ -103,6 +107,14 @@ def read_properties(params):
         raise ValueError('Properties is empty')
     params['gl'] = {**params['gl'], **properties}
     return params
+
+
+def _ensure_locations(params):
+    for folder in ['event_logs_path', 'bpmn_models', 'embedded_path', 'ia_gen_path', 'times_gen_path']:
+        if not os.path.exists(params['gl'][folder]):
+            os.makedirs(params['gl'][folder])
+    if not os.path.exists(OUTPUT_FILES):
+        os.makedirs(OUTPUT_FILES)
 
 
 if __name__ == "__main__":
