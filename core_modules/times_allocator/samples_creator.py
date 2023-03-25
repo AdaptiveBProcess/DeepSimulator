@@ -37,9 +37,9 @@ class SequencesCreator():
     def _vectorize_seq(self, log, params):
         """
         Dataframe vectorizer.
-        parms:
+        params:
             columns: list of features to vectorize.
-            parms (dict): parms for training the network
+            params (dict): params for training the network
         Returns:
             dict: Dictionary that contains all the LSTM inputs.
         """
@@ -96,9 +96,9 @@ class SequencesCreator():
     def _dual_vectorize_seq(self, log, params):
         """
         Dataframe vectorizer.
-        parms:
+        params:
             columns: list of features to vectorize.
-            parms (dict): parms for training the network
+            params (dict): params for training the network
         Returns:
             dict: Dictionary that contains all the LSTM inputs.
         """
@@ -168,9 +168,9 @@ class SequencesCreator():
     def _vectorize_nt_seq(self, log, params):
         """
         Dataframe vectorizer.
-        parms:
+        params:
             columns: list of features to vectorize.
-            parms (dict): parms for training the network
+            params (dict): params for training the network
         Returns:
             dict: Dictionary that contains all the LSTM inputs.
         """
@@ -230,7 +230,7 @@ class SequencesCreator():
     # =============================================================================
     def reformat_events(self, log, columns, one_timestamp):
         """Creates series of activities, roles and relative times per trace.
-        parms:
+        params:
             self.log: dataframe.
             ac_index (dict): index of activities.
             rl_index (dict): index of roles.

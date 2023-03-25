@@ -4,29 +4,29 @@ Created on Tue Jan 26 15:05:36 2021
 
 @author: Manuel Camargo
 """
-import os
 import copy
-import random
 import itertools
+import os
+import random
 import traceback
 
 import pandas as pd
-import utils.support as sup
 import utils.slurm_multiprocess as slmp
+import utils.support as sup
 
 
-class ModelHPCOptimizer():
+class ModelHPCOptimizer:
     """
     Hyperparameter-optimizer class
     """
-       
-    def __init__(self, parms, log_train, log_valdn, ac_index, ac_weights):
+
+    def __init__(self, parms, log_train, log_valdn, ac_index, embedding_file_name):
         """constructor"""
         self.space = self.define_search_space(parms)
         self.log_train = copy.deepcopy(log_train)
         self.log_valdn = copy.deepcopy(log_valdn)
         self.ac_index = ac_index
-        self.ac_weights = ac_weights
+        self.embedding_file_name = embedding_file_name
         # Load settings
         self.parms = parms
         self.temp_output = parms['output']
@@ -37,38 +37,28 @@ class ModelHPCOptimizer():
         # Results file
         if not os.path.exists(self.file_name):
             open(self.file_name, 'w').close()
-        
+
         self.conn = {'partition': 'main',
-                    'mem': str(32000),
-                    'cpus': str(10),
-                    'env': 'deep_sim3',
-                    'script': os.path.join('core_modules', 
-                                           'times_allocator',
-                                           'slurm_trainer.py')}
+                     'mem': str(32000),
+                     'cpus': str(10),
+                     'env': 'deep_sim3',
+                     'script': os.path.join('core_modules', 'times_allocator', 'slurm_trainer.py')}
         self.slurm_workers = 50
         self.best_output = None
         self.best_parms = dict()
         self.best_loss = 1
-        
+
     @staticmethod
     def define_search_space(parms):
         space = list()
-        listOLists = [parms['lstm_act'], 
-                      parms['dense_act'], 
-                      parms['n_size'],
-                      parms['l_size'], 
-                      parms['optim']]
+        list_of_lists = [parms['lstm_act'], parms['dense_act'], parms['n_size'], parms['l_size'], parms['optim']]
         # selection method definition
         preconfigs = list()
-        for lists in itertools.product(*listOLists):
-            preconfigs.append(dict(lstm_act=lists[0],
-                                   dense_act=lists[1],
-                                   n_size=lists[2],
-                                   l_size=lists[3],
-                                   optim=lists[4]))
-        def_parms = {
-            'imp': parms['imp'], 'file': parms['file'],
-            'batch_size': parms['batch_size'], 'epochs': parms['epochs']}
+        for lists in itertools.product(*list_of_lists):
+            preconfigs.append({'lstm_act': lists[0], 'dense_act': lists[1], 'n_size': lists[2],
+                               'l_size': lists[3], 'optim': lists[4]})
+        def_parms = {'imp': parms['imp'], 'file': parms['file'],
+                     'batch_size': parms['batch_size'], 'epochs': parms['epochs']}
         for config in random.sample(preconfigs, parms['max_eval']):
             space.append({**config, **def_parms})
         return space
@@ -93,19 +83,14 @@ class ModelHPCOptimizer():
 
     def execute_trials(self):
         configs_files = self.export_params()
-        args = [{'p': config, 
+        args = [{'p': config,
                  'f': self.temp_output,
-                 'r': self.file_name} for config in configs_files]
-        mprocessor = slmp.HPC_Multiprocess(self.conn,
-                                            args,
-                                            self.temp_output,
-                                            None,
-                                            self.slurm_workers,
-                                            timeout=5)
-        mprocessor.parallelize()
+                 'r': self.file_name,
+                 'e': self.embedding_file_name} for config in configs_files]
+        m_processor = slmp.HPC_Multiprocess(self.conn, args, self.temp_output, None, self.slurm_workers, timeout=5)
+        m_processor.parallelize()
         try:
-            results = (pd.read_csv(self.file_name)
-                       .sort_values('loss', ascending=True))
+            results = pd.read_csv(self.file_name).sort_values('loss', ascending=True)
             result = results.head(1).iloc[0]
             self.best_output = result.output
             self.best_loss = result.loss
@@ -114,4 +99,3 @@ class ModelHPCOptimizer():
             print(e)
             traceback.print_exc()
             pass
-

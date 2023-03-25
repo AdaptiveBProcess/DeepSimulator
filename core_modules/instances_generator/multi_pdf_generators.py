@@ -310,7 +310,7 @@ class MultiPDFGenerator():
                               .timestamp
                               .min().strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"))
                 times = generate_traces(model, num_inst, start_time)
-                # ia_valdn = ia_valdn[['caseid', 'timestamp']]
+                # ia_validation = ia_validation[['caseid', 'timestamp']]
                 # times = times[['caseid', 'timestamp']]
                 evaluation = sim.SimilarityEvaluator(ia_valdn, times, parms, 0, dtype='serie')
                 evaluation.measure_distance('hour_emd')
