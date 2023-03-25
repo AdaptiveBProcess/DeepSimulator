@@ -6,7 +6,6 @@ Created on Fri Jun 26 13:27:58 2020
 """
 import os
 import sys
-from pathlib import Path
 
 import click
 import yaml
@@ -15,8 +14,8 @@ import deep_simulator as ds
 from support_modules.common import EmbeddingMethods as Em, OUTPUT_FILES
 from support_modules.common import InterArrivalGenerativeMethods as IaG
 from support_modules.common import SequencesGenerativeMethods as SqG
-from support_modules.common import W2VecConcatMethod as Cm
 from support_modules.common import SplitMinerVersion as Sm
+from support_modules.common import W2VecConcatMethod as Cm
 
 
 @click.command()

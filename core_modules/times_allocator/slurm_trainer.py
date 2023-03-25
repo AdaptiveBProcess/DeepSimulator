@@ -80,7 +80,7 @@ class SlurmWorker:
 
     def read_embeddings(self):
         # Load embedded matrix
-        if os.path.exists(os.path.join(os.getcwd(), 'input_files', 'embedded_matix', self.parms['emb_file'])):
+        if os.path.exists(os.path.join(os.getcwd(), 'input_files', 'embedded_matrix', self.parms['emb_file'])):
             self.ac_weights = self.load_embedded(self.index_ac, self.parms['emb_file'])
 
     def exec_pipeline(self):
@@ -176,7 +176,7 @@ class SlurmWorker:
             numpy array: array of weights.
         """
         weights = list()
-        input_folder = os.path.join(os.getcwd(), 'input_files', 'embedded_matix')
+        input_folder = os.path.join(os.getcwd(), 'input_files', 'embedded_matrix')
         with open(os.path.join(input_folder, filename), 'r') as csvfile:
             filereader = csv.reader(csvfile, delimiter=',', quotechar='"')
             for row in filereader:
