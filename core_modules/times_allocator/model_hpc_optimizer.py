@@ -41,7 +41,7 @@ class ModelHPCOptimizer:
         self.conn = {'partition': 'main',
                      'mem': str(32000),
                      'cpus': str(10),
-                     'env': 'deep_sim3',
+                     'env': 'deep_simulator',
                      'script': os.path.join('core_modules', 'times_allocator', 'slurm_trainer.py')}
         self.slurm_workers = 50
         self.best_output = None
