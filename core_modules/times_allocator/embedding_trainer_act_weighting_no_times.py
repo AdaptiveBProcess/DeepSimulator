@@ -36,20 +36,7 @@ class EmbeddingTrainer(EmbeddingBase):
         if os.path.exists(os.path.join(self.embedded_path, self.embedding_file_name)):
             return self._read_embedded(self.index_ac, self.embedding_file_name)
         else:
-            usr_idx = lambda x: self.usr_index.get(x['user'])
-            self.log['usr_index'] = self.log.apply(usr_idx, axis=1)
-
-            self.log['duration'] = self.log.apply(lambda x: (x['end_timestamp'] - x['start_timestamp']).total_seconds(),
-                                                  axis=1)
-            n_bins = int(
-                (np.max(self.log['duration']) - np.min(self.log['duration'])) / (np.mean(self.log['duration'])))
-            print('The number of intervals are: {}'.format(n_bins))
-            self.log['time'] = pd.qcut(self.log['duration'], n_bins, labels=False).astype(str)
-
-            self.time_index = {x: idx for idx, x in enumerate(self.log['time'].drop_duplicates())}
-            self.index_time = {idx: x for idx, x in enumerate(self.log['time'].drop_duplicates())}
-
-            self.log['time_index'] = self.log.apply(lambda x: self.time_index.get(x['time']), axis=1)
+            self.log['usr_index'] = self.log.apply(lambda x: self.usr_index.get(x['user']), axis=1)
 
             dim_number = math.ceil(
                 len(list(itertools.product(*[list(self.ac_index.items()), list(self.usr_index.items())]))) ** 0.25)
